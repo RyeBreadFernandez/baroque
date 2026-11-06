@@ -1,0 +1,110 @@
+# Source of truth for Baroque.xcodeproj. Regenerate with: xcodegen generate
+name: Baroque
+options:
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupOrdering:
+    - order: [Shared, Baroque, BaroqueWidget, BaroqueUITests]
+# The signing team comes from Config/Local.xcconfig (not committed): see Config/Baroque.xcconfig.
+configFiles:
+  Debug: Config/Baroque.xcconfig
+  Release: Config/Baroque.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    MARKETING_VERSION: "1.1.0"
+    CURRENT_PROJECT_VERSION: "2"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+targets:
+  Baroque:
+    type: application
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: Baroque
+    dependencies:
+      - target: BaroqueWidgetExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ryanfernandez.terra
+        PRODUCT_NAME: Baroque
+        INFOPLIST_FILE: Baroque/Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Baroque
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # Saving the home screen icons to Photos from the share sheet.
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "Baroque saves its home screen icons to your photo library so you can give your apps new icons in Shortcuts."
+        CODE_SIGN_ENTITLEMENTS: Baroque/Baroque.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+  BaroqueWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: BaroqueWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ryanfernandez.terra.widgets
+        PRODUCT_NAME: BaroqueWidgetExtension
+        INFOPLIST_FILE: BaroqueWidget/Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Baroque
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        CODE_SIGN_ENTITLEMENTS: BaroqueWidget/BaroqueWidget.entitlements
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: WidgetBackground
+        SKIP_INSTALL: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+  # UI tests drive SpringBoard to place the widgets on the home screen and screenshot them.
+  BaroqueUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: BaroqueUITests
+    dependencies:
+      - target: Baroque
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ryanfernandez.terra.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Baroque
+        TARGETED_DEVICE_FAMILY: "1,2"
+schemes:
+  Baroque:
+    build:
+      targets:
+        Baroque: all
+        BaroqueWidgetExtension: [run, test, profile, analyze, archive]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - BaroqueUITests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+  BaroqueWidgetExtension:
+    build:
+      targets:
+        BaroqueWidgetExtension: all
+        Baroque: all
+    run:
+      config: Debug
+      executable: Baroque

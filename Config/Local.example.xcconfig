@@ -1,0 +1,3 @@
+// Copy to Config/Local.xcconfig and fill in. Your team ID is in Xcode > Settings > Accounts, or in the OU field of your
+// Apple Development certificate (security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject).
+DEVELOPMENT_TEAM = ABCDE12345

@@ -1,0 +1,17 @@
+# Build products and caches
+build/
+ParserTests/.build/
+MockLab/.build*/
+.swiftpm/
+__pycache__/
+xcuserdata/
+*.xcuserstate
+.DS_Store
+
+# Renders: regenerate with MockLab (swift run ...), -renderWidgets and scripts/capture_screenshots.sh. The README's
+# images are in docs/images/.
+MockLab/out/
+screenshots/
+
+# Your own signing team (see Config/Baroque.xcconfig).
+Config/Local.xcconfig
