@@ -1,0 +1,4 @@
+// Project-wide build settings that differ from one developer to the next.
+// A device build needs your Apple ID's team: copy Local.example.xcconfig to Local.xcconfig (git ignores it) and put
+// your team ID in it. Simulator builds need no team.
+#include? "Local.xcconfig"

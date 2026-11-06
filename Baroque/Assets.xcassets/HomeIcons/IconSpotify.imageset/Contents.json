@@ -1,0 +1,12 @@
+{
+  "images": [
+    {
+      "filename": "IconSpotify.png",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}
