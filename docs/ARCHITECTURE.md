@@ -6,7 +6,7 @@ Baroque is three things that ship together, plus two that don't:
 | --- | --- | --- |
 | The app | Settings, the token, live widget previews, the Daily Brief page, home screen setup | `Baroque/` |
 | The widget extension | Five widgets and their timelines | `BaroqueWidget/` |
-| Shared code | Models, parsers, the GitHub and weather clients, the cache, the rococo views | `Shared/`, compiled into both |
+| Shared code | Only what both need: models, parsers, the GitHub and weather clients, the loader and cache, the rococo views | `Shared/`, compiled into both |
 | Parser tests | A Swift package that tests the real `Shared/` parsers through symlinks | `ParserTests/` |
 | The design lab | A macOS Swift package that renders widget looks as images | `MockLab/` |
 
@@ -57,7 +57,11 @@ The task paths are a setting: one vault path per line, where `{daily}` expands t
 
 ### Weather
 
-`WeatherService` asks Open-Meteo for the current conditions and five days of highs, lows, weather codes, sunrise, sunset and the chance of rain. Open-Meteo needs no key. The location is set once in the app, from Core Location or typed in.
+`WeatherClient` asks Open-Meteo for the current conditions and five days of highs, lows, weather codes, sunrise, sunset and the chance of rain, in one request. Open-Meteo needs no key and no account. The location is set once in the app, from Core Location or typed in.
+
+### One fetch for every widget
+
+It fetches once and serves every widget. Day and Today share a provider, and iOS asks for each widget kind and size on its own schedule, so one refresh of the home screen used to fetch the same weather and brief once per widget. `DataLoader.loadDay()` and `loadQuotes()` now return the stored snapshot if it's less than 15 minutes old (and, for the day, from today). The app's Save & Refresh passes `maxAge: 0` to fetch fresh, and the widgets it then reloads reuse that fetch.
 
 ### Storage
 
@@ -71,7 +75,7 @@ The task paths are a setting: one vault path per line, where `{daily}` expands t
 | `baroque.quoteOffset` | how far the next-quote button has moved the rotation |
 | `baroque.brief` | the last Daily Brief fetched in full |
 
-They live in the App Group's `UserDefaults` (`group.com.ryanfernandez.terra`). The token is in the Keychain, in an access group both targets share, and falls back to the App Group's defaults on the simulator, where there's no access group without signing.
+They live in the App Group's `UserDefaults` (`group.com.ryanfernandez.terra`). Settings decode field by field, so a field added in a later version takes its default instead of resetting what was entered. The token is in the Keychain, in an access group both targets share, and falls back to the App Group's defaults on the simulator, where there's no access group without signing.
 
 ### Offline and errors
 
@@ -98,6 +102,8 @@ So a widget that can't reach the network still draws, and says why it's stale.
 **Images.** WidgetKit refuses to draw a widget whose images add up to too many pixels. The widget images are JPEGs cut to their frame at 2 pixels per point, so the largest is 696 × 730. `widgetAccentedRenderingMode(.fullColor)` keeps the paintings in colour when the home screen is set to clear or tinted.
 
 ## The app
+
+The app compiles two files of its own on top of `Shared/`: `Theme.swift` and `Landscape.swift` paint its backdrop (the sky that follows the time of day, the ridges, the stone panels), building on `Shared/Sky.swift`. The widgets need only `Sky.swift`.
 
 `ContentView` is a single form:
 - **The previews:** the real rococo views with the cached snapshots.

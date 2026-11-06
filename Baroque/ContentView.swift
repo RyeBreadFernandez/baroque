@@ -331,8 +331,8 @@ struct ContentView: View {
         guard !isRefreshing else { return }
         isRefreshing = true
         statusMessage = "Fetching..."
-        async let d = DataLoader.loadDay()
-        async let q = DataLoader.loadQuotes()
+        async let d = DataLoader.loadDay(maxAge: 0)      // always fetch: the widgets then reuse this
+        async let q = DataLoader.loadQuotes(maxAge: 0)
         let (day, quotes) = await (d, q)
         daySnapshot = day
         quoteSnapshot = quotes

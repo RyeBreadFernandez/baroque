@@ -24,6 +24,30 @@ struct BaroqueSettings: Codable, Equatable {
     static let masterListTaskPaths = "Tasks/Master Task List.md\n{daily}"
 }
 
+extension BaroqueSettings {
+    /// Saved settings decode field by field: a field added in a later version takes its default, instead of making the
+    /// whole saved value unreadable (which would quietly reset everything entered in the app).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = BaroqueSettings()
+        func value<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T { (try? c.decodeIfPresent(T.self, forKey: key)) ?? fallback }
+        githubOwner = value(.githubOwner, d.githubOwner)
+        githubRepo = value(.githubRepo, d.githubRepo)
+        githubBranch = value(.githubBranch, d.githubBranch)
+        taskPaths = value(.taskPaths, d.taskPaths)
+        dailyNoteFolder = value(.dailyNoteFolder, d.dailyNoteFolder)
+        dailyNoteFormat = value(.dailyNoteFormat, d.dailyNoteFormat)
+        quotesPath = value(.quotesPath, d.quotesPath)
+        latitude = value(.latitude, d.latitude)
+        longitude = value(.longitude, d.longitude)
+        cityName = value(.cityName, d.cityName)
+        useFahrenheit = value(.useFahrenheit, d.useFahrenheit)
+        maxTasks = value(.maxTasks, d.maxTasks)
+        includeUndatedTasks = value(.includeUndatedTasks, d.includeUndatedTasks)
+        quoteRotationMinutes = value(.quoteRotationMinutes, d.quoteRotationMinutes)
+    }
+}
+
 /// The three widget families, and the iPhone 17 size in points every layout is drawn at (RococoFrame scales it to
 /// the phone's own widget size).
 enum BaroqueSize {
