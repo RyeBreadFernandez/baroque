@@ -1,68 +1,5 @@
 import Foundation
 
-enum WeatherService {
-    struct Response: Decodable {
-        struct Current: Decodable {
-            let temperature_2m: Double
-            let apparent_temperature: Double
-            let weather_code: Int
-            let is_day: Int?
-        }
-        struct Daily: Decodable {
-            let temperature_2m_max: [Double]
-            let temperature_2m_min: [Double]
-            let weather_code: [Int]
-            let sunrise: [Double]?
-            let sunset: [Double]?
-            let time: [Double]?
-            let precipitation_probability_max: [Int?]?
-        }
-        let current: Current
-        let daily: Daily
-    }
-
-    static func fetch(latitude: Double, longitude: Double, fahrenheit: Bool) async throws -> WeatherSnapshot {
-        var comps = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
-        comps.queryItems = [
-            URLQueryItem(name: "latitude", value: String(format: "%.4f", latitude)),
-            URLQueryItem(name: "longitude", value: String(format: "%.4f", longitude)),
-            URLQueryItem(name: "current", value: "temperature_2m,apparent_temperature,weather_code,is_day"),
-            URLQueryItem(name: "daily", value: "temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,precipitation_probability_max"),
-            URLQueryItem(name: "temperature_unit", value: fahrenheit ? "fahrenheit" : "celsius"),
-            URLQueryItem(name: "forecast_days", value: "5"),
-            URLQueryItem(name: "timezone", value: "auto"),
-            URLQueryItem(name: "timeformat", value: "unixtime")
-        ]
-        var req = URLRequest(url: comps.url!)
-        req.timeoutInterval = 15
-        let (data, response) = try await URLSession.shared.data(for: req)
-        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-            throw NSError(domain: "Weather", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Weather HTTP \(http.statusCode)"])
-        }
-        let r = try JSONDecoder().decode(Response.self, from: data)
-        // Today is the first daily row; the rest are the days ahead.
-        let d = r.daily
-        let ahead: [ForecastDay] = (d.time ?? []).indices.dropFirst().compactMap { i in
-            guard i < d.temperature_2m_max.count, i < d.temperature_2m_min.count, i < d.weather_code.count else { return nil }
-            return ForecastDay(date: Date(timeIntervalSince1970: d.time![i]), high: d.temperature_2m_max[i],
-                               low: d.temperature_2m_min[i], code: d.weather_code[i],
-                               rain: d.precipitation_probability_max.flatMap { i < $0.count ? $0[i] : nil })
-        }
-        return WeatherSnapshot(
-            temperature: r.current.temperature_2m,
-            apparent: r.current.apparent_temperature,
-            high: r.daily.temperature_2m_max.first ?? r.current.temperature_2m,
-            low: r.daily.temperature_2m_min.first ?? r.current.temperature_2m,
-            code: r.current.weather_code,
-            fetchedAt: Date(),
-            isDay: r.current.is_day.map { $0 == 1 },
-            sunrise: r.daily.sunrise?.first.map { Date(timeIntervalSince1970: $0) },
-            sunset: r.daily.sunset?.first.map { Date(timeIntervalSince1970: $0) },
-            days: ahead
-        )
-    }
-}
-
 enum DataLoader {
     static func dailyNotePath(settings: BaroqueSettings, date: Date = Date()) -> String {
         let f = DateFormatter()
@@ -106,15 +43,24 @@ enum DataLoader {
         return (all, firstError)
     }
 
+    /// How long a fetch serves every widget that asks. Day and Today share a provider, and iOS asks for each widget
+    /// kind and size on its own schedule, so without this one refresh of the home screen fetched the same weather and
+    /// brief once per widget.
+    static let freshFor: TimeInterval = 15 * 60
+
     // Loads weather + tasks. Never throws; errors are recorded in the snapshot and cached data is reused.
-    static func loadDay() async -> DaySnapshot {
+    // A snapshot from the last `maxAge` seconds (today's) is returned as it is; the app passes 0 to always fetch.
+    static func loadDay(maxAge: TimeInterval = freshFor) async -> DaySnapshot {
         let store = Store.shared
+        let previous = store.daySnapshot
+        if let previous, Date().timeIntervalSince(previous.date) < maxAge, Calendar.current.isDateInToday(previous.date) {
+            return previous
+        }
         let settings = store.settings
         let client = GitHubClient(settings: settings, token: store.githubToken)
-        let previous = store.daySnapshot
 
         async let weatherResult: Result<WeatherSnapshot, Error> = {
-            do { return .success(try await WeatherService.fetch(latitude: settings.latitude, longitude: settings.longitude, fahrenheit: settings.useFahrenheit)) }
+            do { return .success(try await WeatherClient.fetch(latitude: settings.latitude, longitude: settings.longitude, fahrenheit: settings.useFahrenheit)) }
             catch { return .failure(error) }
         }()
         async let tasksResult = fetchTasks(client: client, settings: settings)
@@ -138,8 +84,9 @@ enum DataLoader {
         return snap
     }
 
-    static func loadQuotes() async -> QuoteSnapshot {
+    static func loadQuotes(maxAge: TimeInterval = freshFor) async -> QuoteSnapshot {
         let store = Store.shared
+        if let cached = store.quoteSnapshot, Date().timeIntervalSince(cached.fetchedAt) < maxAge { return cached }
         let settings = store.settings
         let client = GitHubClient(settings: settings, token: store.githubToken)
         do {
