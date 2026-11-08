@@ -34,6 +34,20 @@ enum IconFiles {
     static var filesURL: URL? { folder.flatMap { URL(string: "shareddocuments://" + $0.path) } }
 }
 
+/// The 512 px icons as small thumbnails for the app's own lists, made once and kept: decoding 50 full icons to show
+/// them at 34 points took about 50 MB and stalled scrolling.
+enum IconThumbnail {
+    private static let cache = NSCache<NSString, UIImage>()
+
+    static func image(_ asset: String) -> Image {
+        if let hit = cache.object(forKey: asset as NSString) { return Image(uiImage: hit) }
+        guard let full = UIImage(named: asset),
+              let thumb = full.preparingThumbnail(of: CGSize(width: 144, height: 144)) else { return Image(asset) }
+        cache.setObject(thumb, forKey: asset as NSString)
+        return Image(uiImage: thumb)
+    }
+}
+
 /// Saves The Bathing Pool to Photos (the add-only permission is asked the first time).
 final class WallpaperSaver: NSObject {
     static let shared = WallpaperSaver()
@@ -126,6 +140,7 @@ struct HomePlan: View {
             }
             .padding(10)
             .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.black.opacity(0.25)))
+            .drawingGroup()
         }
     }
 
@@ -134,7 +149,7 @@ struct HomePlan: View {
         var side: CGFloat
 
         var body: some View {
-            Image("Icon" + name.replacingOccurrences(of: " ", with: ""))
+            IconThumbnail.image("Icon" + name.replacingOccurrences(of: " ", with: ""))
                 .resizable()
                 .frame(width: side, height: side)
                 .clipShape(RoundedRectangle(cornerRadius: side * 0.234, style: .continuous))

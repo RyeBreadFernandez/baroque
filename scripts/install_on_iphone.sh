@@ -3,6 +3,8 @@
 # Needs: your Apple ID signed in under Xcode > Settings > Accounts, your team in Config/Local.xcconfig (see
 # Config/Local.example.xcconfig), and the phone unlocked and either plugged in or on the same Wi-Fi.
 # Run: scripts/install_on_iphone.sh            PHONE="My iPhone" picks a phone when several are paired.
+# It builds Release (optimised; SwiftUI is much smoother than in Debug). CONFIGURATION=Debug keeps the debug launch
+# arguments (-scrollTo, -saveIcons, …) that scripts/mirror_setup.py uses.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -16,11 +18,12 @@ if [[ -z "$PHONE" ]]; then
     echo "No iPhone connected: unlock it and plug it in (or set PHONE to its name in xcrun devicectl list devices)."
     exit 1
 fi
-APP=build/device/Build/Products/Debug-iphoneos/Baroque.app
+CONFIGURATION=${CONFIGURATION:-Release}
+APP=build/device/Build/Products/$CONFIGURATION-iphoneos/Baroque.app
 mkdir -p build
 
 echo "Building for $PHONE…"
-xcodebuild -project Baroque.xcodeproj -scheme Baroque -configuration Debug \
+xcodebuild -project Baroque.xcodeproj -scheme Baroque -configuration "$CONFIGURATION" \
     -destination "platform=iOS,name=$PHONE" -derivedDataPath build/device \
     -allowProvisioningUpdates -allowProvisioningDeviceRegistration build > build/device-build.log 2>&1 || {
     grep -E "error:" build/device-build.log | sort -u

@@ -123,7 +123,7 @@ struct ForecastDay: Codable, Hashable {
     var rain: Int?
 }
 
-struct DaySnapshot: Codable {
+struct DaySnapshot: Codable, Equatable {
     var date: Date
     var weather: WeatherSnapshot?
     var tasks: [TaskItem]
@@ -131,7 +131,7 @@ struct DaySnapshot: Codable {
     var weatherError: String?
 }
 
-struct QuoteSnapshot: Codable {
+struct QuoteSnapshot: Codable, Equatable {
     var quotes: [Quote]
     var fetchedAt: Date
     var error: String?

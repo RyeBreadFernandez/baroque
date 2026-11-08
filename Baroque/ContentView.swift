@@ -77,21 +77,10 @@ struct ContentView: View {
 
     private var previewSection: some View {
         Section {
-            // The widgets themselves, laid out at their iPhone 17 design sizes and scaled to the row.
-            VStack(spacing: 16) {
-                WidgetPreview(size: .large) {
-                    RococoDayView(snapshot: daySnapshot ?? emptyDay, quote: heroQuote, size: .large)
-                }
-                WidgetPreview(size: .medium) {
-                    RococoDayView(snapshot: daySnapshot ?? emptyDay, quote: nil, size: .medium)
-                }
-                WidgetPreview(size: .medium) {
-                    RococoTodayView(snapshot: daySnapshot ?? emptyDay, size: .medium)
-                }
-                WidgetPreview(size: .medium) {
-                    RococoQuoteView(quote: currentQuote, size: .medium, date: Date(), error: quoteSnapshot?.error)
-                }
-            }
+            // The widgets themselves, laid out at their iPhone 17 design sizes and scaled to the row. A view of its own
+            // that compares its inputs, so typing in the settings below doesn't redraw them.
+            WidgetPreviews(day: daySnapshot ?? emptyDay, heroQuote: heroQuote, quote: currentQuote, quoteError: quoteSnapshot?.error)
+                .equatable()
             .padding(14)
             .background(PreviewTray())
             .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 10, trailing: 0))
@@ -242,7 +231,7 @@ struct ContentView: View {
                     let image = Image(Self.iconAsset(app))
                     ShareLink(item: image, preview: SharePreview(app, image: image)) {
                         VStack(spacing: 5) {
-                            image.resizable().aspectRatio(1, contentMode: .fit)
+                            IconThumbnail.image(Self.iconAsset(app)).resizable().aspectRatio(1, contentMode: .fit)
                                 .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                             Text(app).font(.caption2).lineLimit(1).foregroundStyle(Stone.parchment)
                         }
@@ -393,6 +382,7 @@ private struct AppGround: View {
                 }
             }
             .overlay(MountainRange(layers: Ridges.app, night: !clock.isDay, fade: 0.19...0.26))
+            .drawingGroup()
     }
 }
 
@@ -405,6 +395,7 @@ private struct StoneRow: View {
                 LinearGradient(colors: [Stone.goldBright.opacity(0.14), Color.clear], startPoint: .top, endPoint: .bottom)
                     .frame(height: 5)
             }
+            .drawingGroup()
     }
 }
 
@@ -422,6 +413,23 @@ private struct PreviewTray: View {
 
 // A widget at its design shape, as wide as the row: the rococo views scale themselves from their iPhone 17 layout,
 // so this only gives them the widget's proportions, its rounded corners and a shadow on the tray.
+/// The four previews. Equatable, so they're drawn again only when the data they show changes.
+private struct WidgetPreviews: View, Equatable {
+    let day: DaySnapshot
+    let heroQuote: Quote
+    let quote: Quote
+    let quoteError: String?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            WidgetPreview(size: .large) { RococoDayView(snapshot: day, quote: heroQuote, size: .large) }
+            WidgetPreview(size: .medium) { RococoDayView(snapshot: day, quote: nil, size: .medium) }
+            WidgetPreview(size: .medium) { RococoTodayView(snapshot: day, size: .medium) }
+            WidgetPreview(size: .medium) { RococoQuoteView(quote: quote, size: .medium, date: day.date, error: quoteError) }
+        }
+    }
+}
+
 private struct WidgetPreview<Content: View>: View {
     var size: BaroqueSize
     @ViewBuilder var content: Content
@@ -433,7 +441,10 @@ private struct WidgetPreview<Content: View>: View {
             .aspectRatio(design.width / design.height, contentMode: .fit)
             .clipShape(shape)
             .containerShape(shape)
-            .shadow(color: Stone.shadow.opacity(0.6), radius: 10, x: 0, y: 5)
+            // One flat layer: its blurs, reliefs and gradients are composited once, not again on every scrolled frame.
+            .drawingGroup()
+            // The shadow from a plain shape behind it, which is cheap to draw.
+            .background(shape.fill(Stone.shadow).shadow(color: Stone.shadow.opacity(0.6), radius: 10, x: 0, y: 5))
     }
 }
 
