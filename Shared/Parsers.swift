@@ -150,6 +150,17 @@ enum TaskParser {
         return ([note] + headings).filter { !$0.isEmpty }.joined(separator: " > ")
     }
 
+    /// The Daily Brief ends a task with where it came from: "Reply to Sam. (Sam, email, Nov 5)" -> ("Reply to Sam.",
+    /// "Sam, email, Nov 5"). The large Today widget sets the note as a caption. Text without one comes back whole.
+    static func sourceNote(_ text: String) -> (text: String, source: String?) {
+        let t = text.trimmingCharacters(in: .whitespaces)
+        guard t.hasSuffix(")"), let open = t.range(of: " (", options: .backwards) else { return (t, nil) }
+        let source = String(t[open.upperBound..<t.index(before: t.endIndex)]).trimmingCharacters(in: .whitespaces)
+        let head = String(t[..<open.lowerBound]).trimmingCharacters(in: .whitespaces)
+        guard !head.isEmpty, !source.isEmpty, !source.contains("(") else { return (t, nil) }
+        return (head, source)
+    }
+
     // MARK: Agenda
 
     /// Orders tasks for "today" and keeps the first `limit` (at least one). Buckets, in order:

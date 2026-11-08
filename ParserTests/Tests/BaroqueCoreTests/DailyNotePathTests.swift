@@ -73,6 +73,10 @@ final class DailyNotePathTests: XCTestCase {
             "Reply to Sam about the problem set, part B. (Sam, email reply Nov 5)",
         ])
         XCTAssertTrue(tasks.allSatisfy { $0.due == nil })
+        XCTAssertEqual(TaskParser.sourceNote(tasks[1].text).text, "Reply to Sam about the problem set, part B.")
+        XCTAssertEqual(TaskParser.sourceNote(tasks[1].text).source, "Sam, email reply Nov 5")
+        XCTAssertNil(TaskParser.sourceNote("Pump tires, get gas").source)
+        XCTAssertNil(TaskParser.sourceNote("Call (maybe) the dentist").source)   // a parenthesis inside, not a note
         // Undated, so they show while undated tasks are included (the default), in the brief's order.
         XCTAssertEqual(TaskParser.todaysAgenda(tasks, includeUndated: true, limit: 5).count, 2)
     }

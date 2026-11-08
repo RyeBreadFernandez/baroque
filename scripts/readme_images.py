@@ -91,7 +91,7 @@ def home_screen(page1, page2):
 
 def widgets():
     rows = [
-        [("day-large", "Day"), ("quote-large", "Quote"), ("still-life-large", "Still Life")],
+        [("day-large", "Day"), ("today-large", "Today"), ("quote-large", "Quote"), ("still-life-large", "Still Life")],
         [("day-medium", "Day"), ("today-medium", "Today"), ("quote-medium", "Quote")],
         [("day-small", "Day"), ("today-small", "Today"), ("quote-small", "Quote"), ("battery-small", "Battery"), ("still-life-small", "Still Life")],
     ]

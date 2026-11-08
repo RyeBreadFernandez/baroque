@@ -14,6 +14,27 @@ enum ReadmeRenders {
     static var quote: Quote { Quote(text: "Make the quiet thing first, then the loud one.", author: nil) }
     static var longQuote: Quote { DemoData.quotes.first { $0.author == "Seneca" } ?? DemoData.quotes[0] }
 
+    /// The demo day with tasks shaped like the Daily Brief's (examples/Daily Brief/Today.md): a source note on each.
+    static var briefDay: DaySnapshot {
+        var d = Mock.day
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Mock.now)
+        func task(_ text: String, _ days: Int?, _ p: TaskPriority = .none, _ line: Int) -> TaskItem {
+            TaskItem(text: text, due: days.flatMap { cal.date(byAdding: .day, value: $0, to: today) }, priority: p,
+                     sourcePath: "Daily Brief/Today.md", lineNumber: line)
+        }
+        d.tasks = [
+            task("Finish the problem set and upload it to Gradescope. (Canvas, due tonight)", 0, .high, 10),
+            task("Send the lab partners the draft of the methods section. (Jamie, email, Nov 5)", -1, .none, 11),
+            task("Renew the parking permit before it lapses on Sunday. (Transportation office, email, Nov 4)", 2, .none, 12),
+            task("Reply about Saturday's hike: carpool leaves at 7:00 AM. (Hiking club, message, Nov 5)", 1, .none, 13),
+            task("Return the library hold on The Painter of Modern Life.", nil, .none, 14),
+            task("Book office hours for the essay draft.", nil, .none, 15),
+            task("Pump tires, get gas", nil, .none, 16),
+        ]
+        return d
+    }
+
     /// The widgets at their design sizes (iPhone 17), for the gallery.
     static func gallery() -> [Shot] {
         let day = Mock.day
@@ -24,6 +45,10 @@ enum ReadmeRenders {
             shot("day-large", .large, RococoDayView(snapshot: day, quote: quote, size: .large)),
             shot("day-medium", .medium, RococoDayView(snapshot: day, quote: nil, size: .medium)),
             shot("day-small", .small, RococoDayView(snapshot: day, quote: nil, size: .small)),
+            shot("today-large", .large, RococoTodayView(snapshot: briefDay, size: .large)),
+            // States to check by eye (not in the README): short tasks, and a failed fetch over cached tasks.
+            shot("check-today-large-short", .large, RococoTodayView(snapshot: day, size: .large)),
+            shot("check-today-large-error", .large, RococoTodayView(snapshot: { var d = briefDay; d.taskError = "GitHub rejected the token (401)"; return d }(), size: .large)),
             shot("today-medium", .medium, RococoTodayView(snapshot: day, size: .medium)),
             shot("today-small", .small, RococoTodayView(snapshot: day, size: .small)),
             shot("quote-large", .large, RococoQuoteView(quote: longQuote, size: .large, date: Mock.now, error: nil)),

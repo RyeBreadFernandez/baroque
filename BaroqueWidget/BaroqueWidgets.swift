@@ -108,7 +108,7 @@ struct TodayWidgetView: View {
     var entry: DayEntry
 
     var body: some View {
-        RococoTodayView(snapshot: entry.snapshot, size: family == .systemSmall ? .small : .medium)
+        RococoTodayView(snapshot: entry.snapshot, size: family == .systemSmall ? .small : family == .systemMedium ? .medium : .large)
             .containerBackground(for: .widget) { RococoInk.stone }
             .widgetURL(URL(string: "baroque://brief"))   // opens the whole Daily Brief in the app (BriefView)
     }
@@ -122,8 +122,8 @@ struct TodayWidget: Widget {
             TodayWidgetView(entry: entry)
         }
         .configurationDisplayName("Baroque Today")
-        .description("Today's tasks from your vault on painted stone; medium adds the still life's roses.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .description("Today's tasks from your Daily Brief on painted stone; medium adds the still life's roses, and large gives every task room to read. Tap for the whole brief.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
 }

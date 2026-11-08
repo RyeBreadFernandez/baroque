@@ -90,7 +90,7 @@ So a widget that can't reach the network still draws, and says why it's stale.
 | Kind | Provider | Refresh | Tap |
 | --- | --- | --- | --- |
 | `BaroqueDay` | `DayProvider` | every 30 min and at midnight | opens the app |
-| `BaroqueToday` | `DayProvider` | the same | `baroque://brief`: the Daily Brief page |
+| `BaroqueToday` (S M L) | `DayProvider` | the same | `baroque://brief`: the Daily Brief page |
 | `BaroqueQuote` | `QuoteProvider` | six entries ahead on wall-clock slots (every 60 min by default) | `NextQuoteIntent`: the next quote |
 | `BaroqueBattery` | `BatteryProvider` | every 15 min (reads `UIDevice` in the extension) | opens the app |
 | `BaroqueStillLife` | `StillLifeProvider` | never | opens the app |

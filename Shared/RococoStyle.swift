@@ -267,6 +267,19 @@ enum RococoWords {
 
     static func more(_ n: Int) -> String { "+ \(n) more" }
 
+    /// A task's due note against the snapshot's day: "2d late", "today", "tomorrow", otherwise "the 9th" (no weekday
+    /// names). Nil when undated.
+    static func due(_ task: TaskItem, now: Date) -> String? {
+        guard let due = task.due else { return nil }
+        let cal = Calendar.current
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: due)).day ?? 0
+        switch days {
+        case ..<0: return "\(-days)d late"
+        case 0: return "today"
+        default: return dayName(due, from: now)
+        }
+    }
+
     /// Today's sunrise or sunset moved onto the snapshot's day.
     static func today(_ d: Date, at now: Date) -> Date {
         let cal = Calendar.current

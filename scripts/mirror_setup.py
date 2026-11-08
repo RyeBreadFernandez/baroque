@@ -236,9 +236,11 @@ class Phone:
 
 
 # Baroque's widgets in the gallery, in the order of its page dots (each dot jumps straight to its widget).
-GALLERY = ["Day small", "Day medium", "Day large", "Today small", "Today medium",
-           "Quote small", "Quote medium", "Quote large", "Battery small"]
-GALLERY_DOTS_Y, GALLERY_DOT0_X, GALLERY_DOT_STEP = 726, 129.5, 16.6
+GALLERY = ["Day small", "Day medium", "Day large", "Today small", "Today medium", "Today large",
+           "Quote small", "Quote medium", "Quote large", "Battery small", "Still Life small", "Still Life large"]
+# The dots sit centred under the preview, 16.6 pt apart (measured with nine of them on 2026-11-05).
+GALLERY_DOTS_Y, GALLERY_DOT_STEP = 726, 16.6
+GALLERY_DOT0_X = 196 - (len(GALLERY) - 1) / 2 * GALLERY_DOT_STEP
 
 
 def add_widget(phone, which):
