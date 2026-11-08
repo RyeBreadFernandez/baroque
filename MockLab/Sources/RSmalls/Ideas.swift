@@ -302,7 +302,7 @@ struct CountdownIdea: View {
 /// Just one of the user's repainted photographs, a different one each day, like the Still Life widget.
 struct PhotographIdea: View {
     var body: some View {
-        RococoPicture(name: "RococoHero")
+        RococoPicture(name: "RococoPhoto-kings-canyon")
             .frame(width: small.width, height: small.height)
             .clipped()
     }

@@ -56,6 +56,7 @@ enum ReadmeRenders {
             shot("quote-small", .small, RococoQuoteView(quote: DemoData.quotes[3], size: .small, date: Mock.now, error: nil)),
             shot("battery-small", .small, RococoBatteryView(reading: BatteryReading(level: 0.82, charging: false, at: Mock.now))),
             shot("still-life-small", .small, RococoPicture(name: "RococoStillLife")),
+            shot("photograph-small", .small, RococoPicture(name: "RococoPhoto-sunset-small")),
             shot("still-life-large", .large, RococoPicture(name: "RococoStillLifeLarge")),
         ]
     }
@@ -70,6 +71,20 @@ enum ReadmeRenders {
             Shot(name: "phone-quote-small", size: small, view: AnyView(RococoQuoteView(quote: DemoData.quotes[3], size: .small, date: Mock.now, error: nil))),
             Shot(name: "phone-today-small", size: small, view: AnyView(RococoTodayView(snapshot: day, size: .small))),
         ]
+    }
+
+    /// Every photograph in the large Day widget, twice: the list repeats every 30 hours, so the second time each one
+    /// comes round it's six hours later in the day (night where it was day). Not in the README; for checking the words.
+    @MainActor static func renderHeroChecks(to dir: URL) {
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let first = RococoPhotos.nextChange(after: Mock.now)
+        for k in 0..<(RococoPhotos.underWords.count * 2) {
+            var day = Mock.day
+            day.date = first.addingTimeInterval(Double(k * RococoPhotos.hours) * 3600 + 5400)
+            let hour = Calendar.current.component(.hour, from: day.date)
+            let view = RococoDayView(snapshot: day, quote: longQuote, size: .large).frame(width: 348, height: 365)
+            MockRunner.write(view, scale: 2, to: dir.appendingPathComponent(String(format: "%02d-%@-%02dh.png", k, RococoPhotos.largeName(at: day.date), hour)))
+        }
     }
 
     @MainActor static func render(to dir: URL) {

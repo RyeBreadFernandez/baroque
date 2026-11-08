@@ -94,8 +94,11 @@ So a widget that can't reach the network still draws, and says why it's stale.
 | `BaroqueQuote` | `QuoteProvider` | six entries ahead on wall-clock slots (every 60 min by default) | `NextQuoteIntent`: the next quote |
 | `BaroqueBattery` | `BatteryProvider` | every 15 min (reads `UIDevice` in the extension) | opens the app |
 | `BaroqueStillLife` | `StillLifeProvider` | never | opens the app |
+| `BaroquePhotograph` (S) | `PhotographProvider` | a day of three-hour turns laid out ahead; nothing to fetch | opens the app |
 
 **Quote rotation.** The quote for a time slot is `(offset + slot) % count`, where the slot is the wall-clock time divided by the rotation length, so the sequence keeps its place across reloads. `NextQuoteIntent` (an App Intent behind a `Button` in the widget) bumps `quoteOffset` and reloads only the Quote timelines. The large Day widget shows the quote one past the Quote widget's, so the two never match.
+
+**Photographs.** `RococoPhotos` takes the author's repainted photographs in turn, a new one every three hours on the local clock (midnight, 3, 6 …). The large Day widget uses the six landscapes with no one where its quote sits; the Photograph widget uses all ten and never shows the one the Day widget is showing. The Day provider adds an entry at the next change when it falls before its next refresh, so the photograph changes on time.
 
 **Layout.** Every rococo view is laid out once at its iPhone 17 size: small 164, medium 348 × 164, large 348 × 365 points. `RococoFrame` scales that layout to fill whatever size the phone gives the widget, with every layout keeping 14 points clear of the edges for the crop. The paintings are composed around the words, and words on a picture always sit on its darkened side, which is darker again at night.
 

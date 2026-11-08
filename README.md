@@ -12,15 +12,16 @@ It's a personal project: a SwiftUI app and WidgetKit extension with no third-par
 
 ## The widgets
 
-![Every widget: Day, Today, Quote and Still Life large; Day, Today and Quote medium; Day, Today, Quote, Battery and Still Life small](docs/images/widgets.jpg)
+![Every widget: Day, Today, Quote and Still Life large; Day, Today and Quote medium; Day, Today, Quote, Battery, Still Life and Photograph small](docs/images/widgets.jpg)
 
 | Widget | Sizes | Shows | Reads |
 | --- | --- | --- | --- |
-| **Day** | S M L | The sun's path across a carved arc, sunrise and sunset, hours of light. Medium adds the days ahead; large is a repainted photograph with the date, the temperature, a quote and the weather. | Open-Meteo (no key) |
+| **Day** | S M L | The sun's path across a carved arc, sunrise and sunset, hours of light. Medium adds the days ahead; large is one of the author's repainted landscapes, a new one every three hours, with the date, the temperature, a quote and the weather. | Open-Meteo (no key) |
 | **Today** | S M L | Today's tasks on painted stone, overdue ones in terracotta. Large gives each task room for two lines, its due note and where it came from. Tapping it opens the whole Daily Brief. | The vault |
 | **Quote** | S M L | A line from the vault on a repainted photograph. Tapping the quote shows the next one. | The vault |
 | **Battery** | S | The iPhone's charge, inlaid in gold. | The phone |
 | **Still Life** | S L | The flower still life, and nothing else. | Nothing |
+| **Photograph** | S | One of the author's repainted photographs and nothing else, a new one every three hours, never the one the large Day widget is showing. | Nothing |
 
 Every widget keeps drawing with its last data when the phone is offline, and puts a readable error line on itself when a fetch fails.
 

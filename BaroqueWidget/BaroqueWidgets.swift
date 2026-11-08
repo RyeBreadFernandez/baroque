@@ -15,6 +15,7 @@ struct BaroqueWidgetBundle: WidgetBundle {
         QuoteWidget()
         BatteryWidget()
         StillLifeWidget()
+        PhotographWidget()
     }
 }
 
@@ -43,15 +44,15 @@ struct DayProvider: TimelineProvider {
             let snap = await DataLoader.loadDay()
             let settings = Store.shared.settings
             let now = Date()
-            // Re-render at midnight so the date flips, otherwise refresh in ~30 minutes.
-            let today = Calendar.current.startOfDay(for: now)
-            let midnight = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today.addingTimeInterval(86_400)
-            let next = min(midnight, now.addingTimeInterval(30 * 60))
+            // Refresh in ~30 minutes. In between, re-draw when the photograph's turn changes (every three hours; the
+            // last turn of the day ends at midnight, when the date flips too).
+            let next = now.addingTimeInterval(30 * 60)
             var entries = [DayEntry(date: now, snapshot: snap, settings: settings, quote: DayProvider.quote(at: now))]
-            if midnight < now.addingTimeInterval(30 * 60) {
-                var flipped = snap
-                flipped.date = midnight
-                entries.append(DayEntry(date: midnight, snapshot: flipped, settings: settings, quote: DayProvider.quote(at: midnight)))
+            let change = RococoPhotos.nextChange(after: now)
+            if change < next {
+                var later = snap
+                later.date = change
+                entries.append(DayEntry(date: change, snapshot: later, settings: settings, quote: DayProvider.quote(at: change)))
             }
             completion(Timeline(entries: entries, policy: .after(next)))
         }
@@ -313,5 +314,42 @@ struct StillLifeView: View {
                     .rococoFullColor()
                     .scaledToFill()
             }
+    }
+}
+
+// MARK: - Photograph widget
+
+/// One of the user's repainted photographs and nothing else, a new one every three hours (2026-11-08: "a widget similar
+/// to this that is for the small variant and has no text on it"); never the one the large Day widget is showing.
+struct PhotographProvider: TimelineProvider {
+    func placeholder(in context: Context) -> StillLifeEntry { StillLifeEntry(date: Date()) }
+    func getSnapshot(in context: Context, completion: @escaping (StillLifeEntry) -> Void) { completion(StillLifeEntry(date: Date())) }
+
+    /// A day of turns, laid out ahead; nothing to fetch.
+    func getTimeline(in context: Context, completion: @escaping (Timeline<StillLifeEntry>) -> Void) {
+        var entries = [StillLifeEntry(date: Date())]
+        var t = Date()
+        for _ in 0..<(24 / RococoPhotos.hours) {
+            t = RococoPhotos.nextChange(after: t)
+            entries.append(StillLifeEntry(date: t))
+        }
+        completion(Timeline(entries: entries, policy: .atEnd))
+    }
+}
+
+struct PhotographWidget: Widget {
+    let kind = "BaroquePhotograph"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: PhotographProvider()) { entry in
+            Color.clear
+                .containerBackground(for: .widget) {
+                    Image(RococoPhotos.small(at: entry.date)).resizable().interpolation(.high).rococoFullColor().scaledToFill()
+                }
+        }
+        .configurationDisplayName("Baroque Photograph")
+        .description("Your own photographs, repainted in oils, and nothing else: a new one every three hours.")
+        .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
 }

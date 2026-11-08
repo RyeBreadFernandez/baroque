@@ -163,7 +163,7 @@ struct RococoHero: View {
         let night = !SkyClock(now: snap.date, weather: snap.weather).isDay
         let w = snap.weather
         ZStack(alignment: .topLeading) {
-            RococoPicture(name: "RococoHero", night: night)
+            RococoPicture(name: RococoPhotos.large(at: snap.date), night: night)
             RococoCorners()
             LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(0.55), Color(hex: 0x3A2C1F).opacity(0.22), .clear],
                            startPoint: .leading, endPoint: UnitPoint(x: 0.7, y: 0.5))

@@ -209,6 +209,42 @@ struct RococoArcPath: Shape {
 
 // MARK: - Pictures
 
+/// The user's repainted photographs taking turns (2026-11-08): a new one every three hours on the clock (midnight,
+/// 3, 6 …), on the large Day widget and, never the same one at once, on the Photograph widget. The images are
+/// RococoPhoto-<name> (696 x 730) and RococoPhoto-<name>-small (328 x 328), cut by scripts/export_rococo_textures.py.
+enum RococoPhotos {
+    static let hours = 3
+    /// All of them, for the Photograph widget, which has no words on it.
+    static let all = ["kings-canyon", "valley", "river", "dead-tree", "falls", "bryce", "arch", "zion", "sunset", "zion-canyon"]
+    /// The large Day widget's: landscapes with no one where the quote sits (checked by eye, by day and by night, with
+    /// MockLab's HEROES=1). The photographs of people (falls, zion, sunset, dead-tree) show only on the Photograph
+    /// widget, with nothing over them.
+    static let underWords = ["kings-canyon", "valley", "river", "bryce", "arch", "zion-canyon"]
+
+    /// Which three-hour turn of the local day `date` falls in, counted from 1970 so it keeps moving across days.
+    static func turn(_ date: Date) -> Int {
+        let local = date.timeIntervalSince1970 + Double(TimeZone.current.secondsFromGMT(for: date))
+        return Int(floor(local / Double(hours * 3600)))
+    }
+
+    /// When the next turn begins.
+    static func nextChange(after date: Date) -> Date {
+        let offset = Double(TimeZone.current.secondsFromGMT(for: date))
+        return Date(timeIntervalSince1970: Double(turn(date) + 1) * Double(hours * 3600) - offset)
+    }
+
+    static func largeName(at date: Date) -> String { underWords[turn(date) % underWords.count] }
+
+    static func large(at date: Date) -> String { "RococoPhoto-" + largeName(at: date) }
+
+    /// Half the list on from the large one, and never the same photograph.
+    static func small(at date: Date) -> String {
+        var name = all[(turn(date) + all.count / 2) % all.count]
+        if name == largeName(at: date) { name = all[(all.firstIndex(of: name)! + 1) % all.count] }
+        return "RococoPhoto-" + name + "-small"
+    }
+}
+
 /// One of the repainted photographs (or the still life), filling its frame; darkened and cooled at night.
 struct RococoPicture: View {
     var name: String

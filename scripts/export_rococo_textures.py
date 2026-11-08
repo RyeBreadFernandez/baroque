@@ -10,6 +10,8 @@ its frame at 2 px per point (JPEG, so the app stays small):
   RococoFlowers    304x296   the Today widget's panel: the still life's roses (rococo/flowers.jpg)
   RococoStillLife  328x328   the Still Life widget, small: the whole bouquet in its glass, nothing on it
   RococoStillLifeLarge 696x730  the same, large
+  RococoPhoto-<name>        696x730   the user's repainted photographs that take turns on the large Day widget
+  RococoPhoto-<name>-small  328x328   the same, for the Photograph widget (Shared/RococoStyle.swift, RococoPhotos)
 
 WidgetKit refuses a widget whose images add up to too many pixels; every widget here stays under one large image
 (696x730), well within it. The sources are painted by MockLab/Textures/rococo/make.py and photos.py.
@@ -44,7 +46,6 @@ spec.loader.exec_module(export)
 # name: (source, (width, height) in px, the part shown: left, top and width as fractions; the height follows)
 IMAGES = {
     "RococoLimestone": ("travertine.jpg", (480, 480), (0.0, 0.0, 1.0)),
-    "RococoHero": ("photos/kings-canyon.jpg", (696, 730), (0.03, 0.0, 0.953)),
     "RococoTall": ("photos/sunset.jpg", (696, 730), (0.0, 0.25, 1.0)),
     "RococoWide": ("photos/dead-tree.jpg", (696, 328), (0.0, 0.38, 1.0)),
     "RococoSquare": ("photos/river.jpg", (328, 328), (0.0, 0.0, 1.0)),
@@ -52,6 +53,27 @@ IMAGES = {
     "RococoStillLife": ("flowers.jpg", (328, 328), (0.0, 0.16, 1.0)),
     "RococoStillLifeLarge": ("flowers.jpg", (696, 730), (0.0, 0.14, 1.0)),
 }
+
+
+# The user's repainted photographs that take turns (2026-11-08: "have it so the image on the main screen rotates over
+# time with some of the other images I have taken"), each cut for the large Day widget and for the small Photograph
+# widget: (left, top, width) as fractions, the height following from the frame. The large cuts keep the left side and
+# the top darkest, where the quote and the temperature sit.
+PHOTOS = {
+    "kings-canyon": ((0.03, 0.0, 0.953), (0.0, 0.0, 1.0)),
+    "valley": ((0.02, 0.0, 0.953), (0.0, 0.0, 1.0)),
+    "river": ((0.0, 0.0, 0.953), (0.0, 0.0, 1.0)),
+    "dead-tree": ((0.03, 0.0, 0.953), (0.0, 0.0, 1.0)),
+    "falls": ((0.04, 0.0, 0.953), (0.0, 0.0, 1.0)),
+    "bryce": ((0.0, 0.24, 1.0), (0.0, 0.06, 1.0)),
+    "arch": ((0.0, 0.28, 1.0), (0.0, 0.32, 1.0)),
+    "zion": ((0.0, 0.36, 1.0), (0.0, 0.4, 1.0)),
+    "sunset": ((0.0, 0.33, 1.0), (0.0, 0.38, 1.0)),
+    "zion-canyon": ((0.3, 0.0, 0.436), (0.28, 0.0, 0.457)),
+}
+for _name, (_large, _small) in PHOTOS.items():
+    IMAGES[f"RococoPhoto-{_name}"] = (f"photos/{_name}.jpg", (696, 730), _large)
+    IMAGES[f"RococoPhoto-{_name}-small"] = (f"photos/{_name}.jpg", (328, 328), _small)
 
 
 def cut(src, size, spot):

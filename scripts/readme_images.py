@@ -93,7 +93,7 @@ def widgets():
     rows = [
         [("day-large", "Day"), ("today-large", "Today"), ("quote-large", "Quote"), ("still-life-large", "Still Life")],
         [("day-medium", "Day"), ("today-medium", "Today"), ("quote-medium", "Quote")],
-        [("day-small", "Day"), ("today-small", "Today"), ("quote-small", "Quote"), ("battery-small", "Battery"), ("still-life-small", "Still Life")],
+        [("day-small", "Day"), ("today-small", "Today"), ("quote-small", "Quote"), ("battery-small", "Battery"), ("still-life-small", "Still Life"), ("photograph-small", "Photograph")],
     ]
     scale = 0.5                      # the renders are at 3x; the sheet is at 1.5x
     gap, pad, label = 44, 70, 54
