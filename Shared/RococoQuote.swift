@@ -45,10 +45,10 @@ struct RococoQuoteView: View {
     private var ground: some View {
         Group {
             if size == .medium {
-                LinearGradient(colors: [.clear, RococoInk.umber.opacity(0.72)], startPoint: UnitPoint(x: 0.4, y: 0.5),
+                LinearGradient(colors: [.clear, RococoInk.umber.opacity(min(0.92, 0.72 * RococoTheme.current.scrim))], startPoint: UnitPoint(x: 0.4, y: 0.5),
                                endPoint: .trailing)
             } else {
-                LinearGradient(colors: [.clear, RococoInk.umber.opacity(size == .small ? 0.7 : 0.62)],
+                LinearGradient(colors: [.clear, RococoInk.umber.opacity(min(0.92, (size == .small ? 0.7 : 0.62) * RococoTheme.current.scrim))],
                                startPoint: UnitPoint(x: 0.5, y: size == .small ? 0.3 : 0.4), endPoint: .bottom)
             }
         }

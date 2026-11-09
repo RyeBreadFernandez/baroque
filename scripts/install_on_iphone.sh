@@ -23,9 +23,10 @@ APP=build/device/Build/Products/$CONFIGURATION-iphoneos/Baroque.app
 mkdir -p build
 
 echo "Building for $PHONE…"
+# Built for any iPhone (a destination by name needs the phone unlocked and ready), then installed with devicectl.
 xcodebuild -project Baroque.xcodeproj -scheme Baroque -configuration "$CONFIGURATION" \
-    -destination "platform=iOS,name=$PHONE" -derivedDataPath build/device \
-    -allowProvisioningUpdates -allowProvisioningDeviceRegistration build > build/device-build.log 2>&1 || {
+    -destination "generic/platform=iOS" -derivedDataPath build/device \
+    -allowProvisioningUpdates build > build/device-build.log 2>&1 || {
     grep -E "error:" build/device-build.log | sort -u
     echo "Build failed; the full log is build/device-build.log."
     if grep -q "pairing is in progress" build/device-build.log; then

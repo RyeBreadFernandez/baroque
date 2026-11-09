@@ -9,6 +9,11 @@ import AppKit
 struct Main {
     @MainActor static func main() {
         PaintAssets.install()
+        if ProcessInfo.processInfo.environment["THEMES"] == "1" {
+            ReadmeRenders.renderThemes(to: Mock.root.appendingPathComponent("out/themes", isDirectory: true))
+            print("Rendered the theme options to out/themes")
+            return
+        }
         if ProcessInfo.processInfo.environment["HEROES"] == "1" {
             ReadmeRenders.renderHeroChecks(to: Mock.root.appendingPathComponent("out/heroes", isDirectory: true))
             print("Rendered the hero checks to out/heroes")

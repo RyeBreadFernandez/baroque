@@ -87,6 +87,23 @@ enum ReadmeRenders {
         }
     }
 
+    /// The home screen's widgets in each RococoTheme option, to compare (THEMES=1; 2026-11-08 art redirect).
+    @MainActor static func renderThemes(to root: URL) {
+        let keep = RococoTheme.current
+        for theme in RococoTheme.options {
+            RococoTheme.current = theme
+            let dir = root.appendingPathComponent(theme.name.lowercased(), isDirectory: true)
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            for s in phone() {
+                MockRunner.write(s.view.frame(width: s.size.width, height: s.size.height), scale: 2, to: dir.appendingPathComponent("\(s.name).png"))
+            }
+            let large = BaroqueSize.large.designSize
+            MockRunner.write(RococoTodayView(snapshot: briefDay, size: .large).frame(width: large.width, height: large.height),
+                             scale: 2, to: dir.appendingPathComponent("today-large.png"))
+        }
+        RococoTheme.current = keep
+    }
+
     @MainActor static func render(to dir: URL) {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         for s in gallery() {

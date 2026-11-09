@@ -102,6 +102,8 @@ So a widget that can't reach the network still draws, and says why it's stale.
 
 **Layout.** Every rococo view is laid out once at its iPhone 17 size: small 164, medium 348 × 164, large 348 × 365 points. `RococoFrame` scales that layout to fill whatever size the phone gives the widget, with every layout keeping 14 points clear of the edges for the crop. The paintings are composed around the words, and words on a picture always sit on its darkened side, which is darker again at night.
 
+**Theme.** Colours, how much brushwork shows on the stone, the edge and the darkening behind words on photographs come from `RococoTheme.current` (Quiet). `RococoInk` reads its colours from it, and `RococoFrame` adds the theme's edge.
+
 **Images.** WidgetKit refuses to draw a widget whose images add up to too many pixels. The widget images are JPEGs cut to their frame at 2 pixels per point, so the largest is 696 × 730. `widgetAccentedRenderingMode(.fullColor)` keeps the paintings in colour when the home screen is set to clear or tinted.
 
 ## The app

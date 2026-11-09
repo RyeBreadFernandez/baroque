@@ -10,15 +10,49 @@ import SwiftUI
 //
 // Every layout is fixed at its iPhone 17 size (164, 348 x 164, 348 x 365) and RococoFrame scales it to the widget.
 
+/// The look's adjustable surface (2026-11-08 art redirect: "the effect needs to be a lot more subtle" so the words read,
+/// and the widgets need "a little bit more that makes them stand out"). The widgets draw with `current`; MockLab
+/// renders the others side by side to choose from.
+struct RococoTheme {
+    enum Edge { case soft, carved, crisp }
+
+    var name: String
+    /// The stone's flat colour, under the brushwork.
+    var stone: Color
+    /// How much of the painted brushwork shows over it: 1 is the original oil-painted limestone.
+    var texture: Double
+    var ink: Color
+    var inkSoft: Color
+    var terracotta: Color
+    /// soft: the original lit lip; carved: a groove cut round the inside of every widget; crisp: a dark outline
+    /// with a lit inner edge.
+    var edge: Edge
+    /// How strongly a photograph is darkened behind its words: 1 is the original.
+    var scrim: Double
+
+    static let original = RococoTheme(name: "Current", stone: Color(hex: 0xB5A483), texture: 1, ink: Color(hex: 0x3A2D23),
+                                      inkSoft: Color(hex: 0x6B5B4C), terracotta: Color(hex: 0x9C5B3D), edge: .soft, scrim: 1)
+    static let quiet = RococoTheme(name: "Quiet", stone: Color(hex: 0xDCD1BB), texture: 0.28, ink: Color(hex: 0x2B221B),
+                                   inkSoft: Color(hex: 0x56473A), terracotta: Color(hex: 0x8A4429), edge: .soft, scrim: 1.3)
+    static let carved = RococoTheme(name: "Carved", stone: Color(hex: 0xDCD1BB), texture: 0.28, ink: Color(hex: 0x2B221B),
+                                    inkSoft: Color(hex: 0x56473A), terracotta: Color(hex: 0x8A4429), edge: .carved, scrim: 1.3)
+    static let ivory = RococoTheme(name: "Ivory", stone: Color(hex: 0xEDE6D7), texture: 0.16, ink: Color(hex: 0x261E18),
+                                   inkSoft: Color(hex: 0x53453A), terracotta: Color(hex: 0x86402A), edge: .crisp, scrim: 1.4)
+    static let options = [original, quiet, carved, ivory]
+
+    /// Quiet, chosen 2026-11-08: lighter stone, the brushwork at 28 percent, darker inks, photos darker behind words.
+    static var current = quiet
+}
+
 enum RococoInk {
-    static let ink = Color(hex: 0x3A2D23)
-    static let inkSoft = Color(hex: 0x6B5B4C)
-    static let inkFaint = Color(hex: 0x6E604E)
+    static var ink: Color { RococoTheme.current.ink }
+    static var inkSoft: Color { RococoTheme.current.inkSoft }
+    static var inkFaint: Color { RococoTheme.current.inkSoft }
     static let cream = Color(hex: 0xF7F0E4)
-    static let terracotta = Color(hex: 0x9C5B3D)
+    static var terracotta: Color { RococoTheme.current.terracotta }
     static let shadow = Color(hex: 0x2B1F15)
-    /// The limestone's middle value: behind the stone while it loads, and round the edges on other phone sizes.
-    static let stone = Color(hex: 0xB5A483)
+    /// The stone's flat colour: under the brushwork, and round the edges on other phone sizes.
+    static var stone: Color { RococoTheme.current.stone }
     /// The dark of the paintings' corners.
     static let umber = Color(hex: 0x1C1912)
 }
@@ -43,10 +77,40 @@ struct RococoFrame<Content: View>: View {
             let scale = max(geo.size.width / design.width, geo.size.height / design.height)
             content
                 .frame(width: design.width, height: design.height)
+                .overlay(RococoEdge(theme: RococoTheme.current))
                 .scaleEffect(scale)
                 .frame(width: geo.size.width, height: geo.size.height)
         }
         .clipped()
+    }
+}
+
+/// The edge every widget gets from the theme, over stone and photograph alike (the soft lip is the slab's own).
+struct RococoEdge: View {
+    var theme: RococoTheme
+
+    var body: some View {
+        let outer = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        switch theme.edge {
+        case .soft:
+            EmptyView()
+        case .carved:
+            // A groove cut 7 points in, following the corners: dark at the top left, lit at the bottom right.
+            let groove = RoundedRectangle(cornerRadius: 16, style: .continuous).inset(by: 7)
+            ZStack {
+                groove.stroke(Color.white.opacity(0.55), lineWidth: 1).offset(x: 0.5, y: 0.8)
+                groove.stroke(RococoInk.shadow.opacity(0.42), lineWidth: 1.1)
+                outer.strokeBorder(RococoInk.shadow.opacity(0.28), lineWidth: 1.2)
+            }
+            .allowsHitTesting(false)
+        case .crisp:
+            // A dark outline that holds the widget against the painting, with a lit edge just inside it.
+            ZStack {
+                outer.strokeBorder(RococoInk.shadow.opacity(0.6), lineWidth: 2.2)
+                outer.inset(by: 2.2).strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
+            }
+            .allowsHitTesting(false)
+        }
     }
 }
 
@@ -62,6 +126,7 @@ struct RococoSlab: View {
         ZStack {
             RococoInk.stone
             Image("RococoLimestone").resizable().interpolation(.high).rococoFullColor().scaledToFill()
+                .opacity(RococoTheme.current.texture)
             LinearGradient(colors: [.white.opacity(0.16), .white.opacity(0), .black.opacity(0.1)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             shape.strokeBorder(LinearGradient(stops: [.init(color: .white.opacity(0.35), location: 0),

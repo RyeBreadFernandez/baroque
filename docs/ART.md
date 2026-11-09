@@ -28,6 +28,10 @@ It makes two kinds of image:
 
 `MockLab/Textures/rococo/make.py` uses the same painter for the limestone the widgets are cut from. It's in *The Bathing Pool*'s own colours: the weathered stone of its pedestals and steps, the greens of the grove, the teal of the sky, the terracotta of the flower pots. It also cuts the painting to the phone's screen for the wallpaper.
 
+### How much paint shows
+
+The widgets lay the painted limestone at 28 percent over a light stone colour (`RococoTheme.quiet`). At full strength the brushwork made small text hard to read, so the texture is kept as a quiet surface, and every text colour on it meets 4.5:1 contrast. `RococoTheme` holds the other options that were compared, and `scripts/compare_themes.py` lays them side by side on a home screen.
+
 ## Repainting the photographs
 
 `MockLab/Textures/rococo/photos.py` repaints the author's landscape photographs as Robert or Fragonard might have:

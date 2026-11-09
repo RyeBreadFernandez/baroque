@@ -165,9 +165,10 @@ struct RococoHero: View {
         ZStack(alignment: .topLeading) {
             RococoPicture(name: RococoPhotos.large(at: snap.date), night: night)
             RococoCorners()
-            LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(0.55), Color(hex: 0x3A2C1F).opacity(0.22), .clear],
+            let k = RococoTheme.current.scrim
+            LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(min(0.9, 0.55 * k)), Color(hex: 0x3A2C1F).opacity(min(0.6, 0.22 * k)), .clear],
                            startPoint: .leading, endPoint: UnitPoint(x: 0.7, y: 0.5))
-            LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(0.3), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3))
+            LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(min(0.6, 0.3 * k)), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3))
             VStack(alignment: .trailing, spacing: 0) {
                 Text("\(RococoWords.month(snap.date)) \(RococoWords.day(snap.date))")
                     .font(RococoType.serif(17))
