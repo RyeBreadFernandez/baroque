@@ -83,3 +83,14 @@ How each picture is made:
 - **The home screen pictures:** `readme_images.py` lays those renders onto screenshots of the phone (wallpaper, icons, dock).
 - **The widget sheet and the design-lab sheet:** also from `readme_images.py`.
 - **The Brief page:** from the simulator, launched with `-briefFile examples/Daily\ Brief/Today.md -openBrief`.
+
+## Credits
+
+- **The Bathing Pool.** Hubert Robert, 1777–80, The Metropolitan Museum of Art (Open Access, public domain).
+- **The Swing.** Jean-Honoré Fragonard, 1767, the Wallace Collection (public domain). It appears only in MockLab's alternative wallpapers.
+- **The flower still life.** A nineteenth-century oil of a bouquet in a glass; the painter is not yet identified.
+- **The photographs.** The landscapes are the author's own.
+- **The Matterhorn skyline** in MockLab's Old Master look is traced from Wikimedia Commons, `File:Matterhorn_Riffelsee_2005-06-11.jpg`.
+- **Weather** by [Open-Meteo](https://open-meteo.com) (CC BY 4.0).
+- **Fonts.** Didot, Avenir Next and Savoye LET are system fonts on Apple platforms and aren't included.
+- **Trademarks.** The home screen icons depict the logos of third-party apps (Gmail, Spotify, Slack, Netflix and others) for the author's personal home screen. The trademarks belong to their owners, and this project isn't affiliated with them.
