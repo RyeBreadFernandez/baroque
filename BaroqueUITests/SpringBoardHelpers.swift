@@ -194,6 +194,12 @@ enum SB {
 
     // MARK: Add
 
+    /// The gallery's previews, in the widget bundle's order (BaroqueWidgets.swift).
+    static let galleryOrder = ["Baroque Day|Small", "Baroque Day|Medium", "Baroque Day|Large",
+                               "Baroque Today|Small", "Baroque Today|Medium", "Baroque Today|Large",
+                               "Baroque Quote|Small", "Baroque Quote|Medium", "Baroque Quote|Large", "Baroque Battery|Small",
+                               "Baroque Still Life|Small", "Baroque Still Life|Large", "Baroque Photograph|Small"]
+
     static var galleryIndicator: XCUIElement {
         app.pageIndicators.matching(NSPredicate(format: "value BEGINSWITH 'page '")).firstMatch
     }
@@ -214,7 +220,7 @@ enum SB {
     }
 
     /// Adds a Baroque widget on the current page (must already be in edit mode or it enters it).
-    /// `widget` is "Baroque Day", "Baroque Today", "Baroque Quote" or "Baroque Battery"; `size` is "Small", "Medium" or "Large".
+    /// `widget` is a name in `galleryOrder` ("Baroque Day", "Baroque Today", …); `size` is "Small", "Medium" or "Large".
     /// `beforeAdd` runs while the gallery shows the chosen widget (used for gallery screenshots).
     @discardableResult
     static func addBaroqueWidget(_ widget: String, size: String, beforeAdd: (() -> Void)? = nil,
@@ -232,11 +238,7 @@ enum SB {
         guard cell.waitForExistence(timeout: 8) else { XCTFail("Baroque not found in widget gallery", file: file, line: line); return false }
         cell.tap()
 
-        // Page through the 9 previews (in the bundle's order: Day S/M/L, Today S/M, Quote S/M/L, Battery S) until the
-        // wanted one is centred.
-        let order = ["Baroque Day|Small", "Baroque Day|Medium", "Baroque Day|Large", "Baroque Today|Small", "Baroque Today|Medium",
-                     "Baroque Quote|Small", "Baroque Quote|Medium", "Baroque Quote|Large", "Baroque Battery|Small"]
-        let wantedIndex = (order.firstIndex(of: "\(widget)|\(size)") ?? 0) + 1
+        let wantedIndex = (galleryOrder.firstIndex(of: "\(widget)|\(size)") ?? 0) + 1
         guard galleryIndicator.waitForExistence(timeout: 8) else { XCTFail("Widget gallery pages not shown", file: file, line: line); return false }
         var found = false
         for _ in 0..<20 {

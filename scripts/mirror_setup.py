@@ -15,7 +15,13 @@ What iPhone Mirroring does with synthetic input (learned the hard way):
   synthetic scroll-wheel events are ignored, so app screens that need scrolling are reached another way: launch
   Baroque through devicectl with -scrollTo <section> (xcrun devicectl device process launch ... -- -scrollTo github).
 - A widget released straight after moving is often missed; drag(dwell=) rests and nudges it before letting go.
-- Dropping a widget on another of the same size makes a stack, and an icon on an icon makes a folder.
+- Dropping a widget on another of the same size makes a stack, and an icon on an icon makes a folder. But a widget
+  dragged out of the widget gallery and dropped on one doesn't: it takes that widget's place and pushes it to a new page
+  (on the phone and in the simulator, 2026-11-09). Two large widgets never fit on one page, so stacking them means
+  carrying one across pages: about half a second at the screen's edge flips one page, and a widget held anywhere over
+  the other page makes it reflow (the target slides away), so it has to go straight onto the target.
+- A page swipe that lands inside an app swipes across whatever row is there, and a full swipe deletes it (an alarm in
+  Clock, 2026-11-09). swipe_left()/swipe_right() now check for the home screen first.
 - Mirroring ends whenever the phone is unlocked; lock it and tap Connect.
 
 Needs: iPhone Mirroring set up and the phone locked nearby; cliclick (brew install cliclick); Accessibility and Screen
@@ -179,12 +185,21 @@ class Phone:
 
     # Page swipes run along the strip of wallpaper between the grid's last row and the page dots, where nothing sits.
     def swipe_left(self):    # to the next page
+        self.on_home_screen()
         self.drag(330, SWIPE_Y, 50, SWIPE_Y, steps=20, step_ms=12)
         self.release(50, SWIPE_Y)
 
     def swipe_right(self):   # to the previous page
+        self.on_home_screen()
         self.drag(60, SWIPE_Y, 340, SWIPE_Y, steps=20, step_ms=12)
         self.release(340, SWIPE_Y)
+
+    def on_home_screen(self):
+        """Stops unless the home screen is showing (its Search pill, or Done in edit mode). Inside an app a page swipe is
+        a full swipe across a list row, which deletes it: on 2026-11-09 one landed in Clock and deleted an alarm."""
+        words = self.look("before-swipe")
+        if not (self.find("Search", words=words, exact=False, below=680, above=725) or self.find("Done", words=words, above=60)):
+            raise RuntimeError(f"Not on the home screen, so no swipe (see {self.last})")
 
     def release(self, x, y):
         """A second finger-up: now and then the phone misses a swipe's release and stops between two pages."""
@@ -237,10 +252,12 @@ class Phone:
 
 # Baroque's widgets in the gallery, in the order of its page dots (each dot jumps straight to its widget).
 GALLERY = ["Day small", "Day medium", "Day large", "Today small", "Today medium", "Today large",
-           "Quote small", "Quote medium", "Quote large", "Battery small", "Still Life small", "Still Life large"]
-# The dots sit centred under the preview, 16.6 pt apart (measured with nine of them on 2026-11-05).
+           "Quote small", "Quote medium", "Quote large", "Battery small", "Still Life small", "Still Life large",
+           "Photograph small"]
+# The dots sit centred under the preview, 16.6 pt apart (measured with nine of them on 2026-11-05). The gallery shows
+# at most ten, shrinking the last ones, so only the first eight can be tapped where expected (2026-11-09).
 GALLERY_DOTS_Y, GALLERY_DOT_STEP = 726, 16.6
-GALLERY_DOT0_X = 196 - (len(GALLERY) - 1) / 2 * GALLERY_DOT_STEP
+GALLERY_DOT0_X = 196 - (min(len(GALLERY), 10) - 1) / 2 * GALLERY_DOT_STEP
 
 
 def add_widget(phone, which):
