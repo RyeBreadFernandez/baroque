@@ -66,6 +66,25 @@ final class QuoteParserTests: XCTestCase {
         XCTAssertEqual(quotes("> Simplify, simplify.\n- [ ] Buy a notebook"), [q("Simplify, simplify.")])
     }
 
+    /// Under a bullet quote, a plain bullet is the next quote in the list: only a sub-bullet or a dash line is its author.
+    func testAPlainBulletUnderAQuotedBulletIsTheNextQuote() {
+        XCTAssertEqual(quotes("- \"Simplify, simplify.\"\n- Know thyself.\n- Less is more."),
+                       [q("Simplify, simplify."), q("Know thyself."), q("Less is more.")])
+        XCTAssertEqual(quotes("- “Simplify, simplify.”\n- Henry David Thoreau"),
+                       [q("Simplify, simplify."), q("Henry David Thoreau")])
+        XCTAssertEqual(quotes("- “Simplify, simplify.”\n— Henry David Thoreau"), [q("Simplify, simplify.", "Henry David Thoreau")])
+        XCTAssertEqual(quotes("- “Simplify, simplify.”\n– Henry David Thoreau"), [q("Simplify, simplify.", "Henry David Thoreau")])
+    }
+
+    /// Under a quote on a line of its own, `- B` is its author only when B reads like a name, not a sentence.
+    func testAPlainSentenceUnderAStandaloneQuoteIsNotItsAuthor() {
+        XCTAssertEqual(quotes("“Simplify, simplify.”\n- Know thyself."), [q("Simplify, simplify."), q("Know thyself.")])
+        XCTAssertEqual(quotes("“Simplify, simplify.”\n- Is this the way?"), [q("Simplify, simplify."), q("Is this the way?")])
+        XCTAssertEqual(quotes("“Simplify, simplify.”\n- Henry David Thoreau, Walden"), [q("Simplify, simplify.", "Henry David Thoreau, Walden")])
+        let long = String(repeating: "a word ", count: 13)   // 91 characters: a sentence, not a name
+        XCTAssertEqual(quotes("“Simplify, simplify.”\n- \(long)").count, 2)
+    }
+
     /// `> “Text” - Author`: a hyphen right after a closing quotation mark is an attribution.
     func testHyphenAfterClosingQuoteInABlockquote() {
         XCTAssertEqual(quotes("> “Brevity is the soul of wit.” - William Shakespeare"),
