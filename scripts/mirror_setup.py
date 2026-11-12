@@ -23,6 +23,18 @@ What iPhone Mirroring does with synthetic input (learned the hard way):
 - A page swipe that lands inside an app swipes across whatever row is there, and a full swipe deletes it (an alarm in
   Clock, 2026-11-09). swipe_left()/swipe_right() now check for the home screen first.
 - Mirroring ends whenever the phone is unlocked; lock it and tap Connect.
+- The phone's keyboard never shows: the Mac's keyboard types into the phone. A focused text field shows only its caret.
+
+What it checks before it touches anything (each check raises and the run stops, rather than tapping blind):
+- The window: at its actual size (View > Actual Size) when it starts, and before every tap, hold, drag or keystroke,
+  still where it was, the same size, and iPhone Mirroring the front app (check_window).
+- Page swipes and adding a widget happen only on the home screen: its centred Search pill, or Edit and Done at the top
+  in edit mode (is_home_screen).
+- The widget gallery: after each dot it taps, the preview's title and size must be the widget it wants (gallery_shows).
+- In Shortcuts and the file picker, each target is read before it is tapped: the Search fields, the shortcut card's
+  "..." with no other card in the way (card_menu), the editor's title, Image, and the icon file whose name is exactly
+  "Baroque <app>" below the search field (icon_file). Text is cleared only when a caret shows in the field (caret_in),
+  except Spotlight's, opened from the home screen, which keeps its last search selected.
 
 Needs: iPhone Mirroring set up and the phone locked nearby; cliclick (brew install cliclick); Accessibility and Screen
 Recording allowed for the app this runs in. It takes over the mouse while it runs. It never types the passcode or the
@@ -47,6 +59,7 @@ SHOTS = os.path.join(ROOT, "build", "mirror-shots")
 APP = "iPhone Mirroring"
 # The phone's screen inside the window, in points: the window is the screen plus a strip at the top for its toolbar.
 INSET_X, INSET_TOP, SCREEN_W, SCREEN_H = 9, 39, 392, 852
+WINDOW_W = SCREEN_W + 2 * INSET_X + 1                  # the window's width at View > Actual Size
 
 
 # The home screen grid on the iPhone 15 Pro with large icons, in points: column and row centres, and the dock.
@@ -63,6 +76,11 @@ def run(*args, check=True):
 
 def osa(script):
     return run("osascript", "-e", script)
+
+
+def plain(text):
+    """A word as read, lowercased, without the magnifier OCR reads as "Q" and the trailing marks of menus and links."""
+    return re.sub(r"^[q⌕]\s+", "", text.strip().lower()).strip(" .…>›⌄")
 
 
 class Word:
@@ -92,17 +110,45 @@ class Phone:
         self.focus()
 
     # The window
+    def window(self):
+        """iPhone Mirroring now: (frontmost, x, y, width, height), its window in the Mac's points."""
+        out = osa(f'tell application "System Events" to tell process "{APP}" to '
+                  'return {frontmost} & (position of window 1) & (size of window 1)')
+        front, *rest = [v.strip() for v in out.split(",")]
+        x, y, w, h = (int(float(v)) for v in rest)
+        return front == "true", x, y, w, h
+
     def focus(self):
+        """Brings iPhone Mirroring to the front and notes where its window is. Stops unless it's at its actual size,
+        the size every point in this script was measured at."""
         run("open", "-a", APP)
         for _ in range(20):
             try:
-                pos = osa(f'tell application "System Events" to tell process "{APP}" to get position of window 1')
-                self.wx, self.wy = (int(v) for v in pos.split(", "))
-                time.sleep(0.5)
-                return
+                _, self.wx, self.wy, self.ww, self.wh = self.window()
+                break
             except (subprocess.CalledProcessError, ValueError):
                 time.sleep(1)
-        sys.exit("iPhone Mirroring didn't open a window: lock the phone, keep it nearby, and open iPhone Mirroring once by hand.")
+        else:
+            sys.exit("iPhone Mirroring didn't open a window: lock the phone, keep it nearby, and open iPhone Mirroring once by hand.")
+        if not actual_size(self.ww, self.wh):
+            sys.exit(f"iPhone Mirroring's window is {self.ww} x {self.wh} points, not its actual size ({WINDOW_W} wide): "
+                     "choose View > Actual Size in iPhone Mirroring, leave the window where it is, and run this again.")
+        time.sleep(0.5)
+
+    def check_window(self):
+        """Before every touch and keystroke: iPhone Mirroring must be the front app, with its window where focus()
+        found it and the same size. Otherwise a click lands off target or in another Mac window, while the
+        screenshots (taken of the window alone) still look fine."""
+        try:
+            front, x, y, w, h = self.window()
+        except (subprocess.CalledProcessError, ValueError):
+            raise RuntimeError("iPhone Mirroring has no window any more (the phone was unlocked?), so nothing is touched.")
+        if not front:
+            raise RuntimeError("iPhone Mirroring isn't the front app, so nothing is touched: another window would get "
+                               "the clicks. Bring it to the front and call focus() (or run this again).")
+        if (x, y, w, h) != (self.wx, self.wy, self.ww, self.wh):
+            raise RuntimeError(f"iPhone Mirroring's window moved or changed size ({self.wx},{self.wy} {self.ww}x{self.wh} "
+                               f"-> {x},{y} {w}x{h}), so nothing is touched: call focus() (or run this again).")
 
     def menu(self, item):
         """View > Home Screen, App Switcher or Spotlight."""
@@ -113,8 +159,8 @@ class Phone:
         return int(self.wx + INSET_X + x), int(self.wy + INSET_TOP + y)
 
     # Seeing
-    def look(self, name="look"):
-        """Photographs the screen and reads it: the words, top to bottom."""
+    def capture(self, name="look"):
+        """Photographs the phone's screen and returns the picture's path (also self.last)."""
         self.step += 1
         name = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:28]
         path = os.path.join(SHOTS, f"{time.strftime('%H%M%S')}-{self.step:03d}-{name}.png")
@@ -124,20 +170,20 @@ class Phone:
         run("screencapture", "-x", "-o", f"-l{run(WINID)}", path)
         from PIL import Image
         im = Image.open(path)
-        k = im.width / (SCREEN_W + 2 * INSET_X + 1)
+        k = im.width / WINDOW_W
         im.crop((round(INSET_X * k), round(INSET_TOP * k), round((INSET_X + SCREEN_W) * k), round((INSET_TOP + SCREEN_H) * k))).save(path)
-        words = [Word(json.loads(line)) for line in run(OCR, path).splitlines() if line.strip()]
         self.last = path
+        return path
+
+    def look(self, name="look"):
+        """Photographs the screen and reads it: the words, top to bottom."""
+        path = self.capture(name)
+        words = [Word(json.loads(line)) for line in run(OCR, path).splitlines() if line.strip()]
         return sorted(words, key=lambda w: (round(w.y / 8), w.x))
 
     def find(self, label, exact=True, words=None, below=0, above=SCREEN_H):
         words = words if words is not None else self.look(label)
-        want = label.lower()
-        for w in words:
-            got = w.text.lower().strip(" .…>›")
-            if (got == want if exact else want in got) and below <= w.center[1] <= above:
-                return w
-        return None
+        return find_word(words, label, exact, below, above)
 
     def wait(self, label, timeout=10, **kw):
         end = time.time() + timeout
@@ -147,8 +193,9 @@ class Phone:
                 return w
             time.sleep(0.8)
 
-    # Touching
+    # Touching (each touch and keystroke checks the window first)
     def tap_at(self, x, y, pause=1.0):
+        self.check_window()
         gx, gy = self.to_global(x, y)
         run("cliclick", f"c:{gx},{gy}")
         time.sleep(pause)
@@ -161,6 +208,7 @@ class Phone:
         return w
 
     def hold(self, x, y, seconds=1.2):
+        self.check_window()
         gx, gy = self.to_global(x, y)
         run("cliclick", f"dd:{gx},{gy}", f"w:{int(seconds * 1000)}", f"du:{gx},{gy}")
         time.sleep(0.8)
@@ -168,6 +216,7 @@ class Phone:
     def drag(self, x1, y1, x2, y2, hold=0.0, steps=12, step_ms=16, dwell=0.0):
         """A finger drag. Through iPhone Mirroring a drag that starts on an icon or widget picks it up at once, and one
         that starts on bare wallpaper swipes the page. hold: a pause before moving; dwell: a pause before letting go."""
+        self.check_window()
         a, b = self.to_global(x1, y1), self.to_global(x2, y2)
         cmds = [f"dd:{a[0]},{a[1]}"]
         if hold:
@@ -194,25 +243,52 @@ class Phone:
         self.drag(60, SWIPE_Y, 340, SWIPE_Y, steps=20, step_ms=12)
         self.release(340, SWIPE_Y)
 
-    def on_home_screen(self):
-        """Stops unless the home screen is showing (its Search pill, or Done in edit mode). Inside an app a page swipe is
-        a full swipe across a list row, which deletes it: on 2026-11-09 one landed in Clock and deleted an alarm."""
-        words = self.look("before-swipe")
-        if not (self.find("Search", words=words, exact=False, below=680, above=725) or self.find("Done", words=words, above=60)):
-            raise RuntimeError(f"Not on the home screen, so no swipe (see {self.last})")
+    def on_home_screen(self, words=None, doing="swipe"):
+        """Stops unless the home screen is showing (is_home_screen). Inside an app a page swipe is a full swipe across a
+        list row, which deletes it: on 2026-11-09 one landed in Clock and deleted an alarm."""
+        words = words if words is not None else self.look(f"before-{doing}")
+        if not is_home_screen(words):
+            raise RuntimeError(f"Not on the home screen, so no {doing} (see {self.last})")
+
+    def wait_home(self, doing, tries=3):
+        """on_home_screen, allowing the home screen a moment to settle after View > Home Screen."""
+        for i in range(tries):
+            words = self.look(f"before-{doing}")
+            if is_home_screen(words) or i == tries - 1:
+                return self.on_home_screen(words, doing)
+            time.sleep(0.8)
 
     def release(self, x, y):
         """A second finger-up: now and then the phone misses a swipe's release and stops between two pages."""
+        self.check_window()
         gx, gy = self.to_global(x, y)
         run("cliclick", f"du:{gx},{gy}")
         time.sleep(1.2)
 
     def type(self, text):
+        self.check_window()
         run("cliclick", f"t:{text}")
         time.sleep(0.5)
 
-    def clear_field(self):
-        """Select all in the focused text field and delete it (Spotlight keeps the last search)."""
+    def focused(self, field, tries=3):
+        """True once a caret shows in the text field round `field` (a Word read in it). The caret blinks, so this looks
+        up to `tries` times; iPhone Mirroring never shows the phone's keyboard, so the caret is the only sign."""
+        for i in range(tries):
+            if caret_in(self.capture(f"caret-{i}"), field):
+                return True
+            time.sleep(0.35)
+        return False
+
+    def clear_field(self, field):
+        """Selects all in the text field round `field` (a Word read in it) and deletes it. Raises unless a caret shows
+        there: with no field focused, Command-A and Delete would act on whatever the app has selected."""
+        if not self.focused(field):
+            raise RuntimeError(f"No caret in the field at {field!r}, so nothing is deleted (see {self.last})")
+        self.select_all_and_delete()
+
+    def select_all_and_delete(self):
+        """Command-A, then Delete. Only where a field is known to have the focus (clear_field, open_app)."""
+        self.check_window()
         osa(f'tell application "{APP}" to activate')
         osa('tell application "System Events" to keystroke "a" using command down')
         time.sleep(0.3)
@@ -221,6 +297,7 @@ class Phone:
     def key(self, name):
         """return, enter, escape, delete or tab. cliclick's key presses don't reach the phone; System Events' do."""
         codes = {"return": 36, "enter": 76, "escape": 53, "delete": 51, "tab": 48}
+        self.check_window()
         osa(f'tell application "{APP}" to activate')
         osa(f'tell application "System Events" to key code {codes[name]}')
         time.sleep(0.6)
@@ -236,8 +313,16 @@ class Phone:
     def open_app(self, name):
         """Spotlight (from the Home Screen: inside some apps the menu item does nothing), the app's name, its Top Hit."""
         self.menu("Home Screen")
+        self.wait_home(doing="Spotlight")
         self.menu("Spotlight")
-        self.clear_field()
+        words = self.look("spotlight")
+        field = next((w for w in words if SPOTLIGHT_FIELD[0] <= w.center[1] <= SPOTLIGHT_FIELD[1] and w.center[0] < 300), None)
+        if not field or is_home_screen(words):
+            raise LookupError(f"Spotlight didn't open (see {self.last})")
+        # Spotlight keeps the last search, selected, so it shows no caret for clear_field to find. Its field has the
+        # focus whenever it's open, and from the home screen these keys reach either it or the home screen, where they
+        # do nothing.
+        self.select_all_and_delete()
         self.type(name)
         time.sleep(2)
         words = self.look(f"spotlight-{name}")
@@ -250,28 +335,255 @@ class Phone:
             self.tap_at(hit.center[0], hit.center[1] - 40, pause=2.5)
 
 
-# Baroque's widgets in the gallery, in the order of its page dots (each dot jumps straight to its widget).
+# Checks on what the screen shows: pure functions of the words read (Word) or of a saved screenshot, so they can be
+# tried on the pictures in build/mirror-shots without the phone.
+SPOTLIGHT_FIELD = (770, 815)                           # Spotlight's search field (y), at the bottom of the screen
+
+
+def find_word(words, label, exact=True, below=0, above=SCREEN_H):
+    want = label.lower()
+    for w in words:
+        got = w.text.lower().strip(" .…>›")
+        if (got == want if exact else want in got) and below <= w.center[1] <= above:
+            return w
+    return None
+
+
+def actual_size(w, h):
+    """The window is at View > Actual Size: as wide as measured, and tall enough for the whole screen."""
+    return abs(w - WINDOW_W) <= 2 and h >= INSET_TOP + SCREEN_H - 2
+
+
+def is_home_screen(words):
+    """The home screen is showing: its Search pill, the word alone (the magnifier aside), centred above the dock; or, in
+    edit mode, Edit at the top left and Done at the top right. Apps have Search fields and Done buttons too, but not
+    in those places together."""
+    pill = any(plain(w.text) == "search" and abs(w.center[0] - SCREEN_W / 2) < 45 and 670 <= w.center[1] <= 735
+               for w in words)
+    edit = any(plain(w.text) == "edit" and w.center[0] < 130 and w.center[1] < 60 for w in words)
+    done = any(plain(w.text) == "done" and w.center[0] > 260 and w.center[1] < 60 for w in words)
+    return pill or (edit and done)
+
+
+def search_field(words, below, above, left_of=SCREEN_W):
+    """An empty search field: its placeholder "Search" (OCR reads the magnifier as "Q") between `below` and `above`."""
+    return next((w for w in words if plain(w.text) == "search" and below <= w.center[1] <= above
+                 and w.center[0] < left_of), None)
+
+
+def caret_in(path, field, pad=8):
+    """True when the screenshot shows a text caret in the field round `field` (a Word read in that field): at the
+    start or the end of its words, a bar at most 2 pt wide that stands out from the field's ground and runs the
+    height of the line (an l or a k runs about 60 percent of it). Any colour: Files and Shortcuts draw it blue."""
+    import numpy as np
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    k = im.width / SCREEN_W
+    top, bottom = max(0, field.y - pad), min(SCREEN_H, field.y + field.h + pad)
+    band = np.asarray(im.crop((0, round(top * k), im.width, round(bottom * k))), dtype=np.float32) / 255
+    ground = np.median(band.reshape(-1, 3), axis=0)
+    on = np.abs(band - ground).max(axis=2) > 0.3
+    # The longest run of "on" pixels down each column.
+    longest = np.zeros(on.shape[1], dtype=int)
+    run_now = np.zeros(on.shape[1], dtype=int)
+    for row in on:
+        run_now = np.where(row, run_now + 1, 0)
+        longest = np.maximum(longest, run_now)
+    tall = max(field.h * 0.85, 12) * k
+    side = round(2.5 * k)
+    first, last = max(side, round((field.x - 8) * k)), min(on.shape[1] - side - 1, round((field.x + field.w + 8) * k))
+    for x in range(first, last + 1):
+        if tall <= longest[x] <= (bottom - top) * k:
+            if longest[x - side] < longest[x] * 0.6 and longest[x + side] < longest[x] * 0.6:
+                return True
+    return False
+
+
+def card_menu(words, card):
+    """Where to tap the "..." of the shortcut card whose label is `card`: 58 pt above the label, at the card's right.
+    Raises unless the label sits where a card's label does and no other card's label is between it and that point,
+    so a shifted grid can't turn the tap into running some other shortcut (the card itself runs it)."""
+    left = card.center[0] < SCREEN_W / 2
+    x, y = (160, card.center[1] - 58) if left else (346, card.center[1] - 58)
+    if abs(card.x - (32 if left else 218)) > 14 or y < 215:
+        raise LookupError(f"{card!r} isn't where a shortcut card's name sits, so its ... isn't tapped")
+    ellipsis = lambda w: re.fullmatch(r"[.•·…o0]+", w.text.strip().lower()) is not None
+    for w in words:                                    # between the card's top row (icon, ...) and its name
+        if w is not card and (w.center[0] < SCREEN_W / 2) == left and y + 14 < w.center[1] < card.center[1] - 8:
+            raise LookupError(f"{w!r} sits between {card!r} and its ..., so the card isn't the one expected")
+    dots = next((w for w in words if ellipsis(w) and abs(w.center[0] - x) < 25 and abs(w.center[1] - y) < 25), None)
+    return dots.center if dots else (x, y)
+
+
+def title_word(words, title=None):
+    """The editor's title at the top centre: the shortcut's name (`title`, if given), which opens its menu."""
+    for w in words:
+        if abs(w.center[0] - SCREEN_W / 2) < 90 and 60 <= w.center[1] <= 105:
+            got = plain(w.text)
+            if (got == title.lower() or got.startswith(title.lower() + " ")) if title else got not in ("", "done", "cancel", "<"):
+                return w
+    return None
+
+
+def icon_file(words, app, below):
+    """The file picker's result named exactly "Baroque <app>" (with or without .png), below `below`: the first line of
+    its name under the file's icon, which the grid wraps ("Baroque App" over "Store"). None if there's no such file:
+    the search field and its "Name Contains" row hold the same words, so they never count."""
+    want = f"baroque {app}".lower()
+    for w in words:
+        if w.center[1] <= below or not w.text.strip().lower().startswith("baroque"):
+            continue
+        text, last = w.text.strip(), w
+        while text.lower() not in (want, want + ".png") and len(text) < len(want) + 4:
+            more = next((v for v in words if 10 < v.center[1] - last.center[1] < 26
+                         and abs(v.center[0] - w.center[0]) < 25), None)
+            if not more:
+                break
+            text, last = f"{text} {more.text.strip()}", more
+        if text.lower() in (want, want + ".png"):
+            return w
+    return None
+
+
+# Baroque's widgets in the gallery, in the order of its page dots, and their display names (BaroqueWidgets.swift).
 GALLERY = ["Day small", "Day medium", "Day large", "Today small", "Today medium", "Today large",
            "Quote small", "Quote medium", "Quote large", "Battery small", "Still Life small", "Still Life large",
            "Photograph small"]
+WIDGET_NAMES = ["Day", "Today", "Quote", "Battery", "Still Life", "Photograph"]
 # The dots sit centred under the preview, 16.6 pt apart (measured with nine of them on 2026-11-05). The gallery shows
-# at most ten, shrinking the last ones, so only the first eight can be tapped where expected (2026-11-09).
-GALLERY_DOTS_Y, GALLERY_DOT_STEP = 726, 16.6
+# at most ten, shrinking the last ones, so only the first eight can be tapped where expected (2026-11-09); past those
+# add_widget steps one page at a time.
+GALLERY_DOTS_Y, GALLERY_DOT_STEP, GALLERY_TAPPABLE = 726, 16.6, 8
 GALLERY_DOT0_X = 196 - (min(len(GALLERY), 10) - 1) / 2 * GALLERY_DOT_STEP
 
 
+def gallery_title_word(words):
+    """The gallery page's title, "Baroque <widget>", centred above the preview, as read."""
+    return next((w for w in words if re.fullmatch(r"baroque .+", plain(w.text))
+                 and abs(w.center[0] - SCREEN_W / 2) < 60 and 170 <= w.center[1] <= 300), None)
+
+
+def gallery_title(words):
+    """The widget the gallery page is titled with ("Baroque Day" -> "Day")."""
+    w = gallery_title_word(words)
+    return next((n for n in WIDGET_NAMES if w and plain(w.text) == f"baroque {n.lower()}"), None)
+
+
+def _runs(mask):
+    """(start, end) of each run of True in a 1-D array."""
+    import numpy as np
+    d = np.diff(np.concatenate([[0], mask.astype(np.int8), [0]]))
+    return list(zip(np.nonzero(d == 1)[0], np.nonzero(d == -1)[0]))
+
+
+def _close(mask, gap):
+    """The mask with every gap of at most `gap` between two runs of True filled."""
+    out = mask.copy()
+    spans = _runs(mask)
+    for (_, e), (s, _) in zip(spans, spans[1:]):
+        if s - e <= gap:
+            out[e:s] = True
+    return out
+
+
+def preview_box(path, words=(), bottom=GALLERY_DOTS_Y - 14):
+    """The gallery preview's frame (left, top, right, bottom in points): below the title and its description, the
+    area round the screen's centre that differs from the sheet (its flat colour, taken beside the page dots). None if
+    nothing is there."""
+    import numpy as np
+    from PIL import Image
+    top = 170
+    title = gallery_title_word(words)
+    if title:                                           # the description: lines right under the title
+        top = title.y + title.h
+        for w in sorted(words, key=lambda w: w.y):
+            if w.y > title.y and w.y - top < 30 and abs(w.center[0] - SCREEN_W / 2) < 150:
+                top = max(top, w.y + w.h)
+        top += 6
+    im = Image.open(path).convert("RGB")
+    k = im.width / SCREEN_W
+    a = np.asarray(im, dtype=np.float32) / 255
+    y0, y1 = round((GALLERY_DOTS_Y - 8) * k), round((GALLERY_DOTS_Y + 8) * k)
+    sheet = np.median(np.concatenate([a[y0:y1, round(20 * k):round(90 * k)].reshape(-1, 3),
+                                      a[y0:y1, round(302 * k):round(372 * k)].reshape(-1, 3)]), axis=0)
+    t, b = round(top * k), round(bottom * k)
+    diff = np.abs(a[t:b] - sheet).max(axis=2) > 0.05
+    # Columns where the preview is, then its rows; dark paint can match the sheet here and there, so short gaps close.
+    c = round(SCREEN_W / 2 * k)
+    across = _runs(_close(diff.mean(axis=0) > 0.1, round(8 * k)))
+    left, right = next(((s, e) for s, e in across if s <= c < e), (None, None))
+    if left is None:
+        return None
+    down = _runs(_close(diff[:, left:right].mean(axis=1) > 0.3, round(12 * k)))
+    if not down:
+        return None
+    s, e = max(down, key=lambda r: r[1] - r[0])
+    return left / k, (t + s) / k, right / k, (t + e) / k
+
+
+def preview_size(box):
+    """small, medium or large from the preview's frame (its shape, and its width beside the screen's), or None."""
+    if not box:
+        return None
+    w, h = box[2] - box[0], box[3] - box[1]
+    if w < 80 or h < 60:
+        return None
+    if w / h > 1.6:
+        return "medium"
+    if not 0.7 < w / h < 1.4:
+        return None
+    return "small" if w < SCREEN_W * 0.62 else "large"
+
+
+def gallery_shows(path, words):
+    """What the gallery page shows, as in GALLERY ("Quote medium"), from its title and its preview; None if unsure."""
+    name, size = gallery_title(words), preview_size(preview_box(path, words))
+    return f"{name} {size}" if name and size else None
+
+
+def current_dot_x(path):
+    """x of the gallery's current page dot: of the dots in a row, the one that stands out most from the sheet."""
+    import numpy as np
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    k = im.width / SCREEN_W
+    band = np.asarray(im.crop((round(30 * k), round((GALLERY_DOTS_Y - 6) * k), round((SCREEN_W - 30) * k),
+                               round((GALLERY_DOTS_Y + 6) * k))), dtype=np.float32) / 255
+    ground = np.median(band.reshape(-1, 3), axis=0)
+    contrast = np.abs(band - ground).max(axis=2).max(axis=0)
+    peaks = sorted(((float(contrast[s:e].max()), (s + e) / 2) for s, e in _runs(contrast > 0.12)), reverse=True)
+    if not peaks or (len(peaks) > 1 and peaks[0][0] < peaks[1][0] * 1.25):
+        return None
+    return 30 + peaks[0][1] / k
+
+
+def gallery_check(phone, want):
+    """Reads the gallery page; raises unless it shows `want`. Returns what it shows."""
+    words = phone.look(f"gallery-{want}")
+    shown = gallery_shows(phone.last, words)
+    if shown != want:
+        raise LookupError(f"The gallery shows {shown or 'a page it cannot read'}, not {want}, so nothing is added "
+                          f"(see {phone.last})")
+    return shown
+
+
 def add_widget(phone, which):
-    """Adds one of Baroque's widgets to the top of the current page (the page is in edit mode or gets put in it)."""
+    """Adds one of Baroque's widgets to the top of the current page (the page is in edit mode or gets put in it).
+    Only from the home screen or the widget gallery, and only once the gallery shows that widget at that size."""
+    want = GALLERY.index(which)
     words = phone.look("before-add-widget")
     if not phone.find("Search Widgets", words=words, exact=False):
-        if not phone.find("Add Widget", words=words, exact=False, above=150):
+        menu = phone.find("Add Widget", words=words, exact=False, above=150)   # edit mode's menu, already open
+        if not (menu and phone.find("Done", words=words, above=60)):
+            phone.on_home_screen(words, doing="widget added")
+        if not menu:
             if not phone.find("Edit", words=words, above=60):
                 phone.hold(196, SWIPE_Y, 1.5)              # long press on bare wallpaper: edit mode
             phone.tap("Edit", timeout=4, above=60)
         phone.tap("Add Widget", timeout=4, exact=False, above=150)   # the menu's item ("Add Widget" with its icon)
         time.sleep(1.2)
-    phone.tap("Search Widgets", timeout=4, exact=False)
-    phone.clear_field()
+    field = phone.tap("Search Widgets", timeout=4, exact=False)
+    phone.clear_field(field)
     phone.type("Baroque")
     time.sleep(1.5)
     words = phone.look("gallery-search")
@@ -279,7 +591,17 @@ def add_widget(phone, which):
     if not hit:
         raise LookupError(f"The gallery found no Baroque widgets (see {phone.last})")
     phone.tap_at(*hit.center, pause=2)
-    phone.tap_at(GALLERY_DOT0_X + GALLERY_DOT_STEP * GALLERY.index(which), GALLERY_DOTS_Y, pause=1.2)
+    # The first eight dots are where they should be; past those, one page at a time from the current dot, checking
+    # each page, since the dots shrink and shift.
+    first = min(want, GALLERY_TAPPABLE - 1)
+    phone.tap_at(GALLERY_DOT0_X + GALLERY_DOT_STEP * first, GALLERY_DOTS_Y, pause=1.2)
+    gallery_check(phone, GALLERY[first])
+    for i in range(first + 1, want + 1):
+        x = current_dot_x(phone.last)
+        if x is None:
+            raise LookupError(f"Couldn't tell which gallery dot is the current one (see {phone.last})")
+        phone.tap_at(x + GALLERY_DOT_STEP * 0.5, GALLERY_DOTS_Y, pause=1.2)
+        gallery_check(phone, GALLERY[i])
     phone.tap("Add Widget", timeout=4, below=700)
     time.sleep(2.5)
 
@@ -310,40 +632,51 @@ def shortcuts_library(phone):
 
 
 def open_existing_shortcut(phone, app):
-    """Opens the user's shortcut for `app` in the editor if one exists and its action is Open <app>. True if it did."""
+    """Opens the user's shortcut for `app` in the editor if one exists and its action is Open <app>. Returns the
+    shortcut's name if it did, None if not."""
     for name in SHORTCUT_NAMES.get(app, [app]):
         words = shortcuts_library(phone)
         for _ in range(3):                                 # the search field, under All Shortcuts; typing lands once it's active
-            phone.tap_at(150, 187, pause=1.2)
-            phone.clear_field()
+            field = search_field(words, 150, 230)
+            if not field:
+                raise LookupError(f"No empty Search field under All Shortcuts (see {phone.last})")
+            phone.tap_at(*field.center, pause=1.2)
+            if not phone.focused(field):
+                words = phone.look(f"search-field-{name}")
+                continue
+            phone.clear_field(field)
             phone.type(name)
             time.sleep(1.5)
             words = phone.look(f"search-{name}")
-            if any(name.lower() in w.text.lower() for w in words if w.center[1] < 230):
+            typed = next((w for w in words if name.lower() in w.text.lower() and w.center[1] < 230), None)
+            if typed:
                 break
         else:
             raise LookupError(f"Typing {name!r} didn't reach the search field (see {phone.last})")
         card = next((w for w in words if w.text.strip().lower() == name.lower() and w.center[1] > 220), None)
         if not card:
-            phone.tap_at(355, 186, pause=1)                # the search field's X
+            phone.clear_field(typed)                       # no such shortcut: empty the search for the next name
             continue
-        dots_x = 160 if card.center[0] < 196 else 346
-        phone.tap_at(dots_x, card.center[1] - 58, pause=2)   # the card's "..." opens the editor (the card runs it)
+        phone.tap_at(*card_menu(words, card), pause=2)     # the card's "..." opens the editor (the card runs it)
         words = phone.look(f"editor-{name}")
         text = " ".join(w.text for w in words)
         if "Open" in text and APP_NAMES.get(app, app).split()[0].lower() in text.lower():
-            return True
+            return name
         print(f"  {name}: not an Open {app} shortcut ({text[:80]})")
-    return False
+    return None
 
 
 def create_shortcut(phone, app):
     """A new shortcut: Open <app>, named after the app."""
-    shortcuts_library(phone)
+    words = shortcuts_library(phone)
     for _ in range(3):
-        phone.tap_at(355, 80, pause=2)                     # +
+        plus = next((w for w in words if w.text.strip() == "+" and w.center[0] > 320 and w.center[1] < 110), None)
+        if not plus:
+            raise LookupError(f"No + at the top right of All Shortcuts (see {phone.last})")
+        phone.tap_at(*plus.center, pause=2)
         if phone.wait("Search Actions", timeout=3, exact=False):
             break
+        words = phone.look("shortcuts-plus")
     phone.tap("Search Actions", timeout=4, exact=False)
     phone.type("Open App")
     open_app_action(phone)
@@ -376,40 +709,62 @@ def pick_app(phone, app):
     phone.tap_at(*hit.center, pause=1.5)
 
 
-def name_shortcut(phone, app):
-    """Renames the shortcut in the editor after the app."""
-    phone.tap_at(198, 80, pause=1.2)
+def tap_title(phone, title=None):
+    """Taps the editor's title (the shortcut's name, `title` if known), which opens its menu. Raises if it isn't there."""
+    words = phone.look("editor-title")
+    word = title_word(words, title)
+    if not word:
+        raise LookupError(f"No title {title or ''!r} at the top of the shortcut's editor (see {phone.last})")
+    phone.tap_at(*word.center, pause=1.2)
+
+
+def rename_to(phone, name):
+    """Title menu > Rename, then the name typed over the old one: cleared first if a caret shows; with none, the old
+    name is selected and typing replaces it. add_to_home_screen reads the title back before it goes on."""
+    tap_title(phone)
     phone.tap("Rename", timeout=3, exact=False)
-    phone.clear_field()
-    phone.type(app)
+    field = title_word(phone.look("renaming"))
+    if not field:
+        raise LookupError(f"The title didn't turn into a field (see {phone.last})")
+    if phone.focused(field):
+        phone.clear_field(field)
+    phone.type(name)
     phone.key("return")
     time.sleep(1)
+
+
+def name_shortcut(phone, app):
+    """Renames the shortcut in the editor after the app. Returns the name it got."""
+    rename_to(phone, app)
     if phone.find("already have a shortcut", exact=False):    # the user has one by that name that does something else
         phone.tap("OK", timeout=3)
-        phone.tap_at(198, 80, pause=1.2)
-        phone.tap("Rename", timeout=3, exact=False)
-        phone.clear_field()
-        phone.type(f"Open {app}")
-        phone.key("return")
-        time.sleep(1)
+        rename_to(phone, f"Open {app}")
+        return f"Open {app}"
+    return app
 
 
-def add_to_home_screen(phone, app):
-    """From the shortcut's editor: Add to Home Screen with Baroque's icon file for `app`."""
-    phone.tap_at(198, 80, pause=1.2)                       # the title's menu
+def add_to_home_screen(phone, app, title=None):
+    """From the shortcut's editor (titled `title`): Add to Home Screen with Baroque's icon file for `app`. Each target
+    is read before it is tapped."""
+    tap_title(phone, title)                                # the title's menu
     phone.tap("Add to Home Screen", timeout=3, exact=False)
     time.sleep(2)
-    phone.tap_at(104, 358, pause=1.2)                      # Image
+    phone.tap("Image", timeout=3, below=320, above=400)    # Image, beside Symbol, under the preview
     phone.tap("Choose File", timeout=3)
     time.sleep(2.5)
-    phone.tap_at(68, 160, pause=1)                         # the file picker's search
-    phone.clear_field()
+    words = phone.look("file-picker")
+    field = search_field(words, 120, 200, left_of=SCREEN_W / 2)
+    if not field:
+        raise LookupError(f"No Search field at the top of the file picker (see {phone.last})")
+    phone.tap_at(*field.center, pause=1)
+    phone.clear_field(field)
     phone.type(f"Baroque {app}")
     time.sleep(2.5)
     words = phone.look(f"file-{app}")
-    if not phone.find(f"Baroque {app}", words=words, exact=False):
+    hit = icon_file(words, app, below=field.center[1] + 80)
+    if not hit:
         raise LookupError(f"No icon file for {app} (see {phone.last})")
-    phone.tap_at(66, 302, pause=2.5)                       # the one result
+    phone.tap_at(*hit.center, pause=2.5)
     words = phone.look(f"home-sheet-{app}")
     if not phone.find("Home Screen", words=words):
         raise LookupError(f"The Home Screen sheet didn't come back (see {phone.last})")
@@ -419,11 +774,12 @@ def add_to_home_screen(phone, app):
 
 def make_icon(phone, app):
     """One home screen icon that opens `app` directly: its shortcut (the user's own, or a new one) with Baroque's icon."""
-    reused = open_existing_shortcut(phone, app)
+    title = open_existing_shortcut(phone, app)
+    reused = title is not None
     if not reused:
         create_shortcut(phone, app)
-        name_shortcut(phone, app)
-    add_to_home_screen(phone, app)
+        title = name_shortcut(phone, app)
+    add_to_home_screen(phone, app, title)
     print(f"{app}: {'reused the existing shortcut' if reused else 'new shortcut'}, added to the home screen")
 
 
@@ -447,7 +803,7 @@ def templates():
 
 
 def identify(path, x, y, size=74):
-    """The icon at (x, y) on a screenshot, or None. A real icon matches its own picture at least 1.5 times better than
+    """The icon at (x, y) on a screenshot, or None. A real icon matches its own picture at least 1.3 times better than
     the runner-up; bare wallpaper, a widget or someone else's icon matches them all about equally (1.0 to 1.1)."""
     import numpy as np
     from PIL import Image

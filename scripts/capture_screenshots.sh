@@ -7,7 +7,7 @@
 #   scripts/capture_screenshots.sh [SIM_UDID] [DERIVED_DATA_PATH]
 #
 # Environment (all optional):
-#   SIM_UDID      simulator to use        (default: the iPhone 17 below; arg 1 wins)
+#   SIM_UDID      simulator to use        (default: the first available iPhone 17, newest iOS first; arg 1 wins)
 #   DERIVED_DATA  derived data folder     (default: <repo>/build; arg 2 wins)
 #   SHOT_DIR      where PNGs are written  (default: <repo>/screenshots)
 #   ERASE=0       keep the simulator as is (default 1: erase it first for a clean home screen)
@@ -21,7 +21,26 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-UDID="${1:-${SIM_UDID:-8FF748F6-7085-4B3E-967C-39582EFD1EB2}}"
+
+# The UDID of the first available "iPhone 17" simulator, the newest iOS runtime first (empty if there's none).
+first_iphone_17() {
+  xcrun simctl list devices available --json 2>/dev/null | /usr/bin/python3 -I -c '
+import json, re, sys
+runtimes = json.load(sys.stdin).get("devices", {})
+for runtime in sorted(runtimes, key=lambda r: [int(n) for n in re.findall(r"\d+", r)], reverse=True):
+    if ".iOS-" in runtime:
+        for device in runtimes[runtime]:
+            if device.get("name") == "iPhone 17" and device.get("isAvailable", True):
+                print(device["udid"])
+                sys.exit()
+' || true
+}
+
+UDID="${1:-${SIM_UDID:-$(first_iphone_17)}}"
+if [[ -z "$UDID" ]]; then
+  echo "error: no iPhone 17 simulator; add one in Xcode (Window > Devices and Simulators) or pass a UDID" >&2
+  exit 1
+fi
 DD="${2:-${DERIVED_DATA:-$ROOT/build}}"
 SHOT_DIR="${SHOT_DIR:-$ROOT/screenshots}"
 ERASE="${ERASE:-1}"

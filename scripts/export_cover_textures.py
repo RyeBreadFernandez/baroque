@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Copies the Old Master Cover textures into the widgets' asset catalog.
+"""Copies the Old Master Cover textures into MockLab's archive catalog.
 
 The Cover paintings are painted by MockLab/Textures/old-master-cover/make.py (value studies as alpha PNGs, 1 px per
-point of each widget, the mountain from matterhorn.json). This copies every PNG there into
-Shared/PaintTextures.xcassets as an imageset named in UpperCamelCase with a Cover prefix:
+point of each widget, the mountain from matterhorn.json). The look left the app on 2026-11-06; MockLab still renders
+it (PaintKit). This copies every PNG there into MockLab/Archive.xcassets as an imageset named in UpperCamelCase with a
+Cover prefix:
 
     day-large-lo.png -> CoverDayLargeLo      gilt.png -> CoverGilt      veil.png -> CoverVeil
 
 Each imageset holds one universal image (the same Contents.json as write() in scripts/make_textures.py). Cover*
-imagesets that are no longer produced are removed; the Paint* imagesets are left alone.
+imagesets that are no longer produced are removed; anything else in the catalog is left alone.
 
     python3 scripts/export_cover_textures.py            copy the existing PNGs
     python3 scripts/export_cover_textures.py --paint    repaint them first (make.py: deterministic, offline;
@@ -57,8 +58,10 @@ def main():
         subprocess.run([sys.executable, "-B", os.path.join(SRC, "make.py")], check=True)
         remove_pycache()
 
-    if not os.path.isdir(CATALOG):
-        sys.exit(f"missing {CATALOG}; run scripts/make_textures.py first")
+    if not os.path.isdir(CATALOG):                      # a fresh catalog, as Xcode would start one
+        os.makedirs(CATALOG)
+        with open(os.path.join(CATALOG, "Contents.json"), "w") as f:
+            json.dump({"info": {"author": "xcode", "version": 1}}, f, indent=2)
 
     produced = set()
     for filename in sorted(os.listdir(SRC)):

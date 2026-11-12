@@ -1,0 +1,15 @@
+{
+  "pictures": "~/Pictures",
+  "photos": {
+    "zion": "Landscapes/zion-overlook.jpg",
+    "bryce": "Landscapes/bryce-amphitheater.jpg",
+    "arch": "Landscapes/delicate-arch.jpg",
+    "sunset": "Landscapes/beach-sunset.jpg",
+    "zion-canyon": "Landscapes/zion-canyon-wide.jpg",
+    "kings-canyon": "Hikes/kings-canyon.jpg",
+    "valley": "Hikes/valley-morning.jpg",
+    "river": "Hikes/river-under-pines.jpg",
+    "falls": "Hikes/falls.jpg",
+    "dead-tree": "Edited/dead-tree.jpg"
+  }
+}

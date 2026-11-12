@@ -5,8 +5,8 @@ import XCTest
 //
 // Add-widget flow: long-press empty space (edit mode: Button "Edit" top left, "Done" top right)
 // -> "Edit" -> menu Button "Add Widget" -> SearchField "Search Widgets" -> type "Baroque" -> Cell "Baroque"
-// -> detail sheet with 6 pages (PageIndicator value "page 3 of 6"; preview Button label "Baroque, Baroque Day",
-// value "Widget, Large") -> Button " Add Widget" (leading space).
+// -> detail sheet with one page per widget and size, 13 of them in galleryOrder (PageIndicator value "page 3 of 13";
+// preview Button label "Baroque, Baroque Day", value "Widget, Large") -> Button " Add Widget" (leading space).
 // Placed widgets are Icon elements with identifier "Baroque" and value "Widget" (the app icon has an empty value).
 // Remove: in edit mode Button identifier "DeleteButton" at the widget's top-left corner
 // -> Alert "Remove “Baroque” Widget?" -> Button "Remove".
@@ -204,11 +204,16 @@ enum SB {
         app.pageIndicators.matching(NSPredicate(format: "value BEGINSWITH 'page '")).firstMatch
     }
 
-    /// Current gallery page (1-based) from "page 3 of 6".
-    static func galleryPage() -> Int? {
+    /// Current gallery page (1-based) and the page count, from "page 3 of 13".
+    static func galleryPages() -> (current: Int, total: Int)? {
         guard galleryIndicator.exists, let v = galleryIndicator.value as? String else { return nil }
-        return v.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }.first
+        let nums = v.split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+        guard nums.count >= 2 else { return nil }
+        return (nums[0], nums[1])
     }
+
+    /// Current gallery page (1-based) from "page 3 of 13".
+    static func galleryPage() -> Int? { galleryPages()?.current }
 
     /// The preview button closest to the horizontal centre of the screen.
     static func currentPreview() -> (label: String, value: String)? {
@@ -219,12 +224,27 @@ enum SB {
         return (b.label, (b.value as? String) ?? "")
     }
 
-    /// Adds a Baroque widget on the current page (must already be in edit mode or it enters it).
-    /// `widget` is a name in `galleryOrder` ("Baroque Day", "Baroque Today", …); `size` is "Small", "Medium" or "Large".
-    /// `beforeAdd` runs while the gallery shows the chosen widget (used for gallery screenshots).
+    /// A preview as `galleryOrder` writes it: label "Baroque, Baroque Day" (the app, then the widget's name) and value
+    /// "Widget, Large" -> "Baroque Day|Large".
+    static func entry(label: String, value: String) -> String {
+        let parts = label.components(separatedBy: ", ")
+        let name = parts.count > 1 ? parts[1] : label
+        let size = ["Small", "Medium", "Large"].first { value.contains($0) } ?? "?"
+        return "\(name)|\(size)"
+    }
+
+    /// The centred preview as `galleryOrder` writes it, read again for a moment while the page settles; nil if unreadable.
+    static func currentEntry() -> String? {
+        for _ in 0..<4 {
+            if let p = currentPreview() { return entry(label: p.label, value: p.value) }
+            pause(0.5)
+        }
+        return nil
+    }
+
+    /// Opens the widget gallery on Baroque's widgets from the current home page (entering edit mode if needed).
     @discardableResult
-    static func addBaroqueWidget(_ widget: String, size: String, beforeAdd: (() -> Void)? = nil,
-                               file: StaticString = #filePath, line: UInt = #line) -> Bool {
+    static func openBaroqueGallery(file: StaticString = #filePath, line: UInt = #line) -> Bool {
         enterEditMode(file: file, line: line)
         guard editButton.waitForExistence(timeout: 3) else { XCTFail("No Edit button", file: file, line: line); return false }
         editButton.tap()
@@ -237,16 +257,56 @@ enum SB {
         let cell = app.cells["Baroque"].firstMatch
         guard cell.waitForExistence(timeout: 8) else { XCTFail("Baroque not found in widget gallery", file: file, line: line); return false }
         cell.tap()
-
-        let wantedIndex = (galleryOrder.firstIndex(of: "\(widget)|\(size)") ?? 0) + 1
         guard galleryIndicator.waitForExistence(timeout: 8) else { XCTFail("Widget gallery pages not shown", file: file, line: line); return false }
+        return true
+    }
+
+    /// Opens Baroque's gallery and reads every page from the first, one swipe at a time: the previews in page order,
+    /// as `galleryOrder` writes them ("?" where a page's preview couldn't be read). Places nothing.
+    static func readGallery(file: StaticString = #filePath, line: UInt = #line) -> [String] {
+        guard openBaroqueGallery(file: file, line: line) else { return [] }
+        for _ in 0..<20 {
+            guard let cur = galleryPage(), cur > 1 else { break }
+            app.swipeRight()
+            pause(0.8)
+        }
+        guard let (first, total) = galleryPages(), first == 1 else {
+            XCTFail("Could not get to the gallery's first page", file: file, line: line)
+            return []
+        }
+        var entries: [String] = []
+        for page in 1...total {
+            guard galleryPage() == page else {
+                XCTFail("The gallery is on page \(galleryPage() ?? 0), not \(page)", file: file, line: line)
+                break
+            }
+            entries.append(currentEntry() ?? "?")
+            if verbose { print("TERRA gallery page \(page) of \(total): \(entries.last ?? "-")") }
+            if page < total { app.swipeLeft(); pause(0.8) }
+        }
+        return entries
+    }
+
+    /// Adds a Baroque widget on the current page (must already be in edit mode or it enters it).
+    /// `widget` is a name in `galleryOrder` ("Baroque Day", "Baroque Today", …); `size` is "Small", "Medium" or "Large".
+    /// `beforeAdd` runs while the gallery shows the chosen widget (used for gallery screenshots).
+    @discardableResult
+    static func addBaroqueWidget(_ widget: String, size: String, beforeAdd: (() -> Void)? = nil,
+                               file: StaticString = #filePath, line: UInt = #line) -> Bool {
+        guard let index = galleryOrder.firstIndex(of: "\(widget)|\(size)") else {
+            XCTFail("\(widget) \(size) isn't in galleryOrder", file: file, line: line)
+            return false
+        }
+        guard openBaroqueGallery(file: file, line: line) else { return false }
+        let wantedIndex = index + 1
         var found = false
         for _ in 0..<20 {
             let cur = galleryPage() ?? 1
-            let p = currentPreview()
-            if verbose { print("TERRA gallery page \(cur), preview \(p?.label ?? "-") / \(p?.value ?? "-"), want \(wantedIndex)") }
             if cur == wantedIndex {
-                found = p.map { $0.label.contains(widget) && $0.value.contains(size) } ?? true
+                // The page must show the wanted widget at the wanted size; a preview that can't be read doesn't count.
+                let shown = currentEntry()
+                if verbose { print("TERRA gallery page \(cur): \(shown ?? "-"), want \(widget)|\(size)") }
+                found = shown == "\(widget)|\(size)"
                 break
             }
             if cur < wantedIndex { app.swipeLeft() } else { app.swipeRight() }

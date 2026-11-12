@@ -12,11 +12,14 @@ For each photograph:
   3. the paint gets its bristle marks and ridges lit from the upper left, a canvas weave, a warm varnish and darker
      corners.
 
-Writes photos/<name>.jpg (long side 1400). The sources stay in ~/Pictures; nothing leaves this machine.
+Writes photos/<name>.jpg (long side 1400). The photographs to repaint, and where they are, come from
+photos.local.json next to this file (git-ignored; start it from photos.local.example.json). The sources stay where
+they are; nothing leaves this machine.
 Run (deterministic, no network; about a minute a photograph):
     python3 MockLab/Textures/rococo/photos.py [names...]
 """
 import importlib.util
+import json
 import math
 import os
 import sys
@@ -34,20 +37,10 @@ mt = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mt)
 gaussian_filter = mt.gaussian_filter
 
-PICTURES = os.path.expanduser("~/Pictures")
-# The user's landscapes, from the wallpapers picked in an earlier session and the Field Notes set.
-PHOTOS = {
-    "zion": "Claude Wallpaper Picks/01_wallpaper.jpg",
-    "bryce": "Claude Wallpaper Picks/03_wallpaper.jpg",
-    "arch": "Claude Wallpaper Picks/04_wallpaper.jpg",
-    "sunset": "Claude Wallpaper Picks/07_wallpaper.jpg",
-    "zion-canyon": "Claude Wallpaper Picks/widget_wide_zion_canyon.jpg",
-    "kings-canyon": "000_IG_FIELD_NOTES_IMPORT/06_DSC07291_square.jpg",
-    "valley": "000_IG_FIELD_NOTES_IMPORT/05_DSC07288_square.jpg",
-    "river": "000_IG_FIELD_NOTES_IMPORT/17_DSC07318_square.jpg",
-    "falls": "000_IG_FIELD_NOTES_IMPORT/07_IMG_0565_square.jpg",
-    "dead-tree": "Lightroom Saved Photos/IMG_5697-Enhanced-NR.jpg",
-}
+# Which photographs to repaint and where they are is the author's own business: it's read from photos.local.json next
+# to this file, which git ignores, so none of their folder or file names are published. photos.local.example.json
+# shows its shape; the names are the ones scripts/export_rococo_textures.py cuts (PHOTOS there).
+LOCAL = os.path.join(HERE, "photos.local.json")
 LONG = 1400
 STRENGTH = 0.66           # how far toward the painting's colours
 
@@ -148,8 +141,25 @@ def weave(h, w):
     return 0.5 * np.sin(xx * 2 * np.pi / 3.2) * np.sin(yy * 2 * np.pi / 3.4)
 
 
-def paint(name, target):
-    rgb = load(os.path.join(PICTURES, PHOTOS[name]))
+def sources():
+    """{name: the photograph's path}, from photos.local.json. Stops with what to do when it's missing or malformed."""
+    where = os.path.relpath(LOCAL)
+    if not os.path.exists(LOCAL):
+        sys.exit(f"No {where} yet. Copy photos.local.example.json (in the same folder) to photos.local.json and\n"
+                 "list your own photographs in it: \"pictures\" is the folder they're in (~/Pictures if left out), and\n"
+                 "\"photos\" gives each name its path inside that folder. Git ignores the file, so your folder and file\n"
+                 "names stay on this Mac.")
+    try:
+        with open(LOCAL) as f:
+            local = json.load(f)
+        pictures = os.path.expanduser(local.get("pictures", "~/Pictures"))
+        return {str(name): os.path.join(pictures, os.path.expanduser(path)) for name, path in local["photos"].items()}
+    except (ValueError, KeyError, AttributeError, TypeError) as e:
+        sys.exit(f"{where} isn't shaped like photos.local.example.json ({e!r}).")
+
+
+def paint(name, target, path):
+    rgb = load(path)
     rgb = old_light(toward(rgb, target, STRENGTH))
     h, w, _ = rgb.shape
     rng = np.random.default_rng(sum(map(ord, name)))
@@ -182,10 +192,17 @@ def paint(name, target):
 
 def main():
     only = [a for a in sys.argv[1:] if not a.startswith("--")]
+    photos = sources()
+    unknown = [name for name in only if name not in photos]
+    if unknown:
+        sys.exit(f"Not in {os.path.relpath(LOCAL)}: {', '.join(unknown)}")
+    chosen = {name: path for name, path in photos.items() if not only or name in only}
+    missing = [path for path in chosen.values() if not os.path.isfile(path)]
+    if missing:
+        sys.exit("These photographs aren't there (check photos.local.json):\n  " + "\n  ".join(missing))
     target = palette()
-    for name in PHOTOS:
-        if not only or name in only:
-            paint(name, target)
+    for name, path in chosen.items():
+        paint(name, target, path)
 
 
 if __name__ == "__main__":

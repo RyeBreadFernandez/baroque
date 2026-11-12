@@ -4,6 +4,8 @@ widgets on The Bathing Pool), and each option's large Today widget, for choosing
 
 Inputs: MockLab/out/themes/<option>/ (cd MockLab && THEMES=1 swift run --scratch-path .build-smalls RSmalls) and a
 screenshot of page two (PAGE2, from scripts/mirror_setup.py). Writes MockLab/out/themes/compare.jpg.
+
+Run: PAGE2=build/mirror-shots/<page two>.png python3 scripts/compare_themes.py
 """
 import os
 import sys
@@ -19,7 +21,14 @@ NAMES = {"current": "Current", "quiet": "Quiet", "carved": "Carved", "ivory": "I
 
 
 def main():
-    page2 = os.environ["PAGE2"]
+    page2 = os.environ.get("PAGE2", "")
+    if not os.path.isfile(page2):
+        sys.exit("Set PAGE2 to a screenshot of the home screen's page two (scripts/mirror_setup.py saves them to "
+                 "build/mirror-shots/): PAGE2=... python3 scripts/compare_themes.py")
+    missing = [o for o in ORDER if not os.path.isfile(os.path.join(THEMES, o, "today-large.png"))]
+    if missing:
+        sys.exit(f"No renders for {', '.join(missing)} in {THEMES}: "
+                 "cd MockLab && THEMES=1 swift run --scratch-path .build-smalls RSmalls")
     cols = []
     for option in ORDER:
         ri.RENDERS = os.path.join(THEMES, option)

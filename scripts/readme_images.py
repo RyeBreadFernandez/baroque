@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Makes the README's pictures in docs/images/, from demo data only (no one's real tasks or quotes):
+"""Makes the README's picture in docs/images/, from demo data only (no one's real tasks or quotes):
 
   home-screen.jpg  the two home screen pages: screenshots of the author's iPhone 15 Pro (wallpaper, icons, dock) with
                    each widget replaced by the shipped widget view rendered with demo data at the size the phone draws it
+
+and, with --all, the three it showed before it was cut short on 2026-11-10 (nothing links them now):
+
   widgets.jpg      every widget at its design size on The Bathing Pool, named
   design-lab.jpg   looks explored in MockLab on the way to this one
   brief.jpg        the app's Daily Brief page, from the simulator with examples/Daily Brief/Today.md
@@ -10,10 +13,12 @@
 Inputs:
   MockLab/out/readme/   README=1 swift run --scratch-path .build-smalls RSmalls   (from MockLab/)
   the two screenshots   PAGE1 and PAGE2 (scripts/mirror_setup.py saves them to build/mirror-shots/)
+  with --all:
   the Brief screenshot  BRIEF (xcrun simctl io booted screenshot, after launching with -briefFile and -openBrief)
   MockLab/out/<look>/   the looks' boards, from their own swift run
 
-Run: PAGE1=... PAGE2=... BRIEF=... python3 scripts/readme_images.py
+Run: PAGE1=... PAGE2=... python3 scripts/readme_images.py
+     PAGE1=... PAGE2=... BRIEF=... python3 scripts/readme_images.py --all
 """
 import glob
 import os
@@ -148,16 +153,25 @@ def brief(screenshot):
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
+    every = "--all" in sys.argv[1:]
+    need = ["PAGE1", "PAGE2"] + (["BRIEF"] if every else [])
+    missing = [name for name in need if not os.path.isfile(os.environ.get(name, ""))]
+    if missing:
+        names = missing[0] if len(missing) == 1 else ", ".join(missing[:-1]) + " and " + missing[-1]
+        sys.exit(f"Set {names} to the screenshot{'s' if len(missing) > 1 else ''} (see the top of "
+                 "scripts/readme_images.py): PAGE1=... PAGE2=... "
+                 + ("BRIEF=... python3 scripts/readme_images.py --all" if every else "python3 scripts/readme_images.py"))
     if not glob.glob(os.path.join(RENDERS, "*.png")):
         sys.exit("Render the widgets first: cd MockLab && README=1 swift run --scratch-path .build-smalls RSmalls")
-    widgets()
-    design_lab()
-    if os.environ.get("PAGE1") and os.environ.get("PAGE2"):
-        home_screen(os.environ["PAGE1"], os.environ["PAGE2"])
-    if os.environ.get("BRIEF"):
+    os.makedirs(OUT, exist_ok=True)
+    home_screen(os.environ["PAGE1"], os.environ["PAGE2"])
+    made = ["home-screen.jpg"]
+    if every:
+        widgets()
+        design_lab()
         brief(os.environ["BRIEF"])
-    for f in sorted(os.listdir(OUT)):
+        made += ["widgets.jpg", "design-lab.jpg", "brief.jpg"]
+    for f in made:
         print(f, Image.open(os.path.join(OUT, f)).size, os.path.getsize(os.path.join(OUT, f)) // 1024, "KB")
 
 

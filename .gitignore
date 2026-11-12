@@ -16,5 +16,8 @@ screenshots/
 # Your own signing team (see Config/Baroque.xcconfig).
 Config/Local.xcconfig
 
+# Where your own photographs are, for the repainting script (start it from photos.local.example.json).
+MockLab/Textures/rococo/photos.local.json
+
 # Working plans for Claude Code sessions (they name private details)
 docs/plans/
