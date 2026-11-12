@@ -3,17 +3,27 @@ import SwiftUI
 // The whole Daily Brief (2026-11-06: "If I click on the daily brief widget can you make it so it pulls up the rest of
 // the brief"). The Today widget opens baroque://brief; the app fetches the brief from the vault on GitHub, keeps the
 // last copy for when it's offline, and sets it out like the note: the title, the summary, each section, its tasks and
-// its bullets. Open in Obsidian opens the note itself. The reading is Shared/Brief.swift.
+// its bullets. Each task's ring ticks it in the vault (2026-11-11: "the tasks on the app should be clickable so that
+// it syncs with obsidian"), through TaskSync. Open in Obsidian opens the note itself. The reading is Shared/Brief.swift.
 
 struct BriefView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @State private var snapshot = Store.shared.brief
     @State private var error: String?
     @State private var notice: String?
     @State private var loading = false
-    /// The note this page reads: the Daily Brief, or the first task path when the brief isn't one.
+    /// The note this page reads and ticks: the Daily Brief, or the first task path when the brief isn't one.
     private let path = Brief.path(settings: Store.shared.settings)
+
+    // Ticks: what's waiting to be written, what's remembered, which taps on this page are being written now, and
+    // the problems of taps that are no longer waiting (the task changed in the vault).
+    @State private var pending = Store.shared.pendingToggles
+    @State private var remembered = Store.shared.doneTasks
+    @State private var saving: Set<String> = []
+    @State private var retrying = false
+    @State private var problems: [String: String] = [:]
 
     var body: some View {
         NavigationStack {
@@ -47,6 +57,9 @@ struct BriefView: View {
             }
             .refreshable { await load() }
             .task { await load() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await retry() } }
+            }
         }
         .tint(Stone.copperLight)
         .preferredColorScheme(.dark)
@@ -68,14 +81,7 @@ struct BriefView: View {
                     .padding(.top, 22).padding(.bottom, 8)
                 Rectangle().fill(Stone.gold.opacity(0.3)).frame(height: 0.7).padding(.bottom, 10)
             case .task(let task):
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: task.done ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 14))
-                        .foregroundStyle(task.done ? Stone.goldMuted : Stone.copperInk)
-                    Text(verbatim: task.text).strikethrough(task.done).foregroundStyle(task.done ? Stone.goldMuted : Stone.parchment)
-                }
-                .font(RococoType.serif(17))
-                .padding(.bottom, 10)
+                taskRow(task)
             case .bullet(let text):
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Circle().fill(Stone.gold).frame(width: 4, height: 4).alignmentGuide(.firstTextBaseline) { $0[.bottom] + 4 }
@@ -88,6 +94,77 @@ struct BriefView: View {
                     .padding(.bottom, 6)
             }
         }
+    }
+
+    /// A task: its ring is the tick button, and a line under it says while it's saving or why it isn't saved.
+    private func taskRow(_ task: Brief.TaskLine) -> some View {
+        let shown = TaskSync.shown(task, path: path, pending: pending, done: remembered)
+        let note = self.note(for: task, waiting: shown.pending)
+        return HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Button { tap(task, done: !shown.done) } label: {
+                Image(systemName: shown.done ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundStyle(shown.done ? Stone.goldMuted : Stone.copperInk)
+                    .frame(width: 28, height: 30, alignment: .leading)   // a tap area larger than the ring
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(verbatim: shown.done ? "Untick \(task.text)" : "Tick \(task.text)"))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: task.text).strikethrough(shown.done).foregroundStyle(shown.done ? Stone.goldMuted : Stone.parchment)
+                if let note {
+                    Text(verbatim: note.text)
+                        .font(RococoType.sans(11.5))
+                        .foregroundStyle(note.problem ? Stone.copperInk : Stone.goldFaint)
+                }
+            }
+        }
+        .font(RococoType.serif(17))
+        .padding(.bottom, 4)
+    }
+
+    /// "Saving…" while a tap is being written; then nothing, or why it isn't written yet.
+    private func note(for task: Brief.TaskLine, waiting: PendingToggle?) -> (text: String, problem: Bool)? {
+        if saving.contains(task.key) { return ("Saving…", false) }
+        if let waiting {
+            if let error = waiting.error { return waiting.retryHelps ? (TaskSync.retryMessage, true) : (error, true) }
+            return retrying ? ("Saving…", false) : (TaskSync.retryMessage, true)
+        }
+        return problems[task.key].map { ($0, true) }
+    }
+
+    private func tap(_ task: Brief.TaskLine, done: Bool) {
+        let request = PendingToggle(path: path, line: task.line, text: task.text, lineNumber: task.lineNumber, done: done)
+        problems[task.key] = nil
+        saving.insert(task.key)
+        TaskSync.record(request)
+        refreshTicks()
+        Task {
+            let outcome = await TaskSync.write(request)
+            saving.remove(task.key)
+            if case .failed(let reason) = outcome, !Store.shared.pendingToggles.contains(where: { $0.isSameTap(as: request) }) {
+                problems[task.key] = reason   // not waiting any more: the task changed in the vault
+            }
+            refreshTicks()
+        }
+    }
+
+    /// The page's copy of what's waiting and remembered, and the brief as the last write left it.
+    private func refreshTicks() {
+        let store = Store.shared
+        pending = store.pendingToggles
+        remembered = store.doneTasks
+        if let brief = store.brief, brief.fetchedAt > (snapshot?.fetchedAt ?? .distantPast) { snapshot = brief }
+    }
+
+    /// Writes whatever is waiting (ticks made offline, on the widget, or made again for a task listed anew).
+    private func retry() async {
+        guard !retrying, !Store.shared.pendingToggles.isEmpty else { return }
+        retrying = true
+        refreshTicks()
+        await TaskSync.retryPending()
+        retrying = false
+        refreshTicks()
     }
 
     private func load() async {
@@ -104,10 +181,14 @@ struct BriefView: View {
             store.brief = fresh
             snapshot = fresh
             error = nil
+            // A task ticked before that the brief lists again unticked shows ticked, and is ticked in the file again.
+            _ = TaskSync.visible(TaskParser.parse(markdown: text, sourcePath: path))
         } catch {
             self.error = snapshot.map { "Showing the copy from \(Brief.when($0.fetchedAt)); couldn't refresh: \(error.localizedDescription)" }
                 ?? "Couldn't read \(path): \(error.localizedDescription)"
         }
+        refreshTicks()
+        await retry()
     }
 
     private func openInObsidian() {

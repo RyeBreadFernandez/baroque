@@ -26,6 +26,8 @@ final class Store {
         static let token = "baroque.githubToken"
         static let movedToDailyBrief = "baroque.movedToDailyBrief"
         static let brief = "baroque.brief"
+        static let pendingToggles = "baroque.pendingToggles"
+        static let doneTasks = "baroque.doneTasks"
     }
 
     /// `Store.shared` everywhere; tests make their own on a throwaway suite.
@@ -55,6 +57,7 @@ final class Store {
             if let data = try? encoder.encode(newValue) {
                 defaults.set(data, forKey: Key.settings)
             }
+            retryStuckToggles()
         }
     }
 
@@ -83,6 +86,35 @@ final class Store {
 
     func bumpQuoteOffset() {
         quoteOffset += 1
+    }
+
+    // MARK: Ticks (TaskSync)
+
+    /// Ticks and unticks not yet written to the vault, oldest first (one per task: a later tap replaces an earlier).
+    var pendingToggles: [PendingToggle] {
+        get { load(Key.pendingToggles) ?? [] }
+        set { save(newValue.isEmpty ? nil : newValue, Key.pendingToggles) }
+    }
+
+    /// Every task ticked in the app or on the widget, newest last, so a task the morning brief lists again stays
+    /// ticked. Unticking forgets it; only the newest `doneTasksLimit` are kept.
+    var doneTasks: [DoneTask] {
+        get { load(Key.doneTasks) ?? [] }
+        set { save(newValue.isEmpty ? nil : Array(newValue.suffix(Store.doneTasksLimit)), Key.doneTasks) }
+    }
+
+    static let doneTasksLimit = 500
+
+    /// The settings or the token were saved: ticks that failed for a reason only the user could fix (a token that can
+    /// only read, a wrong repository) get another try.
+    private func retryStuckToggles() {
+        let list = pendingToggles
+        guard list.contains(where: { !$0.retryHelps }) else { return }
+        pendingToggles = list.map { tap in
+            var again = tap
+            again.retryHelps = true
+            return again
+        }
     }
 
     private func load<T: Decodable>(_ key: String) -> T? {
@@ -139,6 +171,7 @@ final class Store {
             tokenProblem = Store.keychainProblem(result)
             #endif
         }
+        retryStuckToggles()
         return tokenProblem
     }
 
@@ -166,9 +199,10 @@ final class Store {
     }
 
     #if DEBUG
-    // Back to a fresh-install state: default settings, no caches, no token.
+    // Back to a fresh-install state: default settings, no caches, no ticks, no token.
     func resetAll() {
-        for key in [Key.settings, Key.daySnapshot, Key.quoteSnapshot, Key.quoteOffset, Key.brief, Key.movedToDailyBrief] {
+        for key in [Key.settings, Key.daySnapshot, Key.quoteSnapshot, Key.quoteOffset, Key.brief, Key.movedToDailyBrief,
+                    Key.pendingToggles, Key.doneTasks] {
             defaults.removeObject(forKey: key)
         }
         githubToken = ""
