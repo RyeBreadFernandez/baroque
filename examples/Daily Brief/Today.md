@@ -6,12 +6,12 @@ tags: [daily-brief]
 
 # Friday, November 6
 
-A quiet morning, a pottery class after lunch, and a clear weekend; the forecast is good for Saturday's walk.
+A quiet morning, a pottery class after lunch, and a clear weekend; the forecast is good for tomorrow's walk.
 
 ## Needs attention
 - [ ] #todo Send the garden club the draft of the spring planting plan. (Sam, email, Nov 5)
-- [ ] #todo Renew the library card before it lapses on Sunday. (Library, email, Nov 4)
-- [ ] #todo Reply about Saturday's walk: the group meets at 9:00 AM. (Walking group, message, Nov 5)
+- [ ] #todo Renew the library card before it lapses on the 8th. (Library, email, Nov 4)
+- [ ] #todo Reply about tomorrow's walk: the group meets at 9:00 AM. (Walking group, message, Nov 5)
 
 ## Today
 - 12:00 PM to 1:30 PM  Pottery class, Studio 2
@@ -27,4 +27,4 @@ A quiet morning, a pottery class after lunch, and a clear weekend; the forecast 
 
 ## Resolved
 - The library hold on *The Painter of Modern Life* is ready for pickup.
-- The bike shop moved the service to Thursday.
+- The bike shop moved the service to the 12th.

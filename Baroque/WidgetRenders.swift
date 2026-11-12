@@ -75,7 +75,7 @@ enum WidgetRenders {
                 let size = device.size(family.size)
                 report.append("  \(device.name) \(family.name): " + frameNote(design: family.size.designSize, widget: size))
                 for state in days {
-                    let quote = DemoData.quotes[2]
+                    let quote = DemoData.quotes[1]   // one with an author, so the large Day shows who said it
                     write(RococoDayView(snapshot: state.snapshot, quote: quote, size: family.size), size: size,
                           name: "\(device.name)-day-\(family.name)-\(state.name)", dir: dir)
                     write(RococoTodayView(snapshot: state.snapshot, size: family.size), size: size,
