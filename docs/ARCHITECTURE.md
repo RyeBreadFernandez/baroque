@@ -74,7 +74,7 @@ Ticking needs a fine-grained token with **Contents: Read and write** on the vaul
 
 ### One fetch for every widget
 
-It fetches once and serves every widget. Day and Today share a provider, and iOS asks for each widget kind and size on its own schedule, so one refresh of the home screen used to fetch the same weather and brief once per widget. `DataLoader.loadDay()` and `loadQuotes()` now return the stored snapshot if it's less than 15 minutes old (and, for the day, from today). The app's Save & Refresh passes `maxAge: 0` to fetch fresh, and the widgets it then reloads reuse that fetch.
+It fetches once and serves every widget. Day and Today share a provider, and iOS asks for each widget kind and size on its own schedule, so one refresh of the home screen used to fetch the same weather and brief once per widget. `DataLoader.loadDay()` and `loadQuotes()` now return the stored snapshot if it's less than 15 minutes old, from today, and saved without an error (`DataLoader.isFresh`); a failed fetch is never served as fresh. Widgets that load at the same moment share one fetch in progress (`SharedFetch`), and a widget's fetch that finds a newer stored snapshot keeps that one. The app's Save & Refresh passes `maxAge: 0` to fetch fresh, and the widgets it then reloads reuse that fetch.
 
 ### Storage
 
@@ -98,7 +98,7 @@ The token is kept in the Keychain, in an access group both targets share. On an 
 
 Every load records what failed instead of throwing:
 - The snapshot keeps the newest data it has: fresh where the fetch worked, cached where it didn't. The weather is cached only for the day it was fetched.
-- The error goes in the snapshot too, and each widget sets it on its last line ("GitHub rejected the token (401)", "Not found: …", "No GitHub token…").
+- The error goes in the snapshot too, and each widget sets it on its last line ("GitHub rejected the token (401)", "Not found: <path> in <owner/repo> …", "No branch …", "Set a location in the Baroque app", "No GitHub token…").
 
 So a widget that can't reach the network still draws, and says why it's stale.
 
@@ -113,9 +113,9 @@ So a widget that can't reach the network still draws, and says why it's stale.
 | `BaroqueStillLife` | `StillLifeProvider` | never | opens the app |
 | `BaroquePhotograph` (S) | `PhotographProvider` | a day of three-hour turns laid out ahead; nothing to fetch | opens the app |
 
-**Quote rotation.** The quote for a time slot is `(offset + slot) % count`, where the slot is the wall-clock time divided by the rotation length, so the sequence keeps its place across reloads. `NextQuoteIntent` (an App Intent behind a `Button` in the widget) bumps `quoteOffset` and reloads only the Quote timelines. The large Day widget shows the quote one past the Quote widget's, so the two never match.
+**Quote rotation.** The quote for a time slot is `(offset + slot) % count`, where the slot is the wall-clock time divided by the rotation length, so the sequence keeps its place across reloads. `NextQuoteIntent` (an App Intent behind a `Button` in the widget) bumps `quoteOffset` and reloads the Quote and Day timelines. The large Day widget shows the quote one past the Quote widget's (`DataLoader.dayQuoteIndex`), with an entry at every quote slot, so the two never match.
 
-**Photographs.** `RococoPhotos` takes the author's repainted photographs in turn, a new one every three hours on the local clock (midnight, 3, 6 …). The large Day widget uses the six landscapes with no one where its quote sits; the Photograph widget uses all ten and never shows the one the Day widget is showing. The Day provider adds an entry at the next change when it falls before its next refresh, so the photograph changes on time.
+**Photographs.** `RococoPhotos` takes the author's repainted photographs in turn, a new one every three hours on the local clock (midnight, 3, 6 …). The large Day widget uses the six landscapes with no one where its quote sits; the Photograph widget uses all ten and never shows the one the Day widget is showing. The Day provider lays out an entry at every photograph change in the next 24 hours, so the photograph changes on time even when a reload comes late.
 
 **Layout.** Every rococo view is laid out once at its iPhone 17 size: small 164, medium 348 × 164, large 348 × 365 points. `RococoFrame` scales that layout to fill whatever size the phone gives the widget, with every layout keeping 14 points clear of the edges for the crop. The paintings are composed around the words, and words on a picture always sit on its darkened side, which is darker again at night.
 
@@ -153,7 +153,7 @@ iOS lets no app move icons, set the wallpaper or place widgets, so the app hands
 
 | Argument | Does |
 | --- | --- |
-| `-resetData` | fresh-install state |
+| `-resetData` | fresh-install state, including the Brief cache, the one-time Daily Brief move and any pending or remembered ticks |
 | `-seedDemoData` | demo tasks and quotes in the cache |
 | `-renderWidgets` | exact-size PNGs of every widget state at three phone sizes, into the app's Documents |
 | `-scrollTo <section>` | opens the form at a section (`github`, `setup`, `icons`, …) |
