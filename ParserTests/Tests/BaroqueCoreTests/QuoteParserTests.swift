@@ -23,9 +23,63 @@ final class QuoteParserTests: XCTestCase {
                        [q("The best way out is always through", "Robert Frost")])
         XCTAssertEqual(quotes("\"Well done is better than well said.\"\n\n\"Lost time is never found again.\" — Benjamin Franklin"),
                        [q("Well done is better than well said."), q("Lost time is never found again.", "Benjamin Franklin")])
-        XCTAssertEqual(quotes("“Be here now.” — O’Brien"), [q("Be here now.", "O’Brien")])
+        XCTAssertEqual(quotes("“We are the music makers.” — Arthur O’Shaughnessy"), [q("We are the music makers.", "Arthur O’Shaughnessy")])
         // Prose that only starts with a quotation is not a quote.
         XCTAssertEqual(quotes("\"Hi\" is what I said to him."), [])
+    }
+
+    /// The author on the line below a quote in quotation marks (the author's own style), or as a sub-bullet.
+    func testAuthorOnTheLineBelowAQuotedLine() {
+        XCTAssertEqual(quotes("“Simplify, simplify.”\n- Henry David Thoreau"), [q("Simplify, simplify.", "Henry David Thoreau")])
+        XCTAssertEqual(quotes("“Simplify, simplify.”\n— Henry David Thoreau"), [q("Simplify, simplify.", "Henry David Thoreau")])
+        XCTAssertEqual(quotes("- “Hitch your wagon to a star.”\n  - Ralph Waldo Emerson"),
+                       [q("Hitch your wagon to a star.", "Ralph Waldo Emerson")])
+        XCTAssertEqual(quotes("* \"Brevity is the soul of wit.\"\n\t* William Shakespeare"),
+                       [q("Brevity is the soul of wit.", "William Shakespeare")])
+        // Several in a row, each with its author below.
+        let md = """
+        “Well done is better than well said.”
+        - Benjamin Franklin
+        “The best way out is always through.”
+        - Robert Frost
+        """
+        XCTAssertEqual(quotes(md), [q("Well done is better than well said.", "Benjamin Franklin"),
+                                    q("The best way out is always through.", "Robert Frost")])
+    }
+
+    /// An author line only joins the quote just above it, when that quote is in quotation marks and has no author.
+    func testWhatIsNotAnAuthorBelow() {
+        // A blank line between: two quotes.
+        XCTAssertEqual(quotes("“Simplify, simplify.”\n\n- Henry David Thoreau"),
+                       [q("Simplify, simplify."), q("Henry David Thoreau")])
+        // The quote above already has an author: the bullet is a quote of its own.
+        XCTAssertEqual(quotes("“Simplify, simplify.” - Henry David Thoreau\n- Lost time is never found again."),
+                       [q("Simplify, simplify.", "Henry David Thoreau"), q("Lost time is never found again.")])
+        // A list of plain bullet quotes stays a list.
+        XCTAssertEqual(quotes("- Simplify, simplify.\n- Brevity is the soul of wit."),
+                       [q("Simplify, simplify."), q("Brevity is the soul of wit.")])
+        // Quoted bullets in a row are each a quote.
+        XCTAssertEqual(quotes("- “Simplify, simplify.”\n- “Brevity is the soul of wit.”"),
+                       [q("Simplify, simplify."), q("Brevity is the soul of wit.")])
+        // A task is never an author.
+        XCTAssertEqual(quotes("“Simplify, simplify.”\n- [ ] Buy a notebook"), [q("Simplify, simplify.")])
+        XCTAssertEqual(quotes("> Simplify, simplify.\n- [ ] Buy a notebook"), [q("Simplify, simplify.")])
+    }
+
+    /// `> “Text” - Author`: a hyphen right after a closing quotation mark is an attribution.
+    func testHyphenAfterClosingQuoteInABlockquote() {
+        XCTAssertEqual(quotes("> “Brevity is the soul of wit.” - William Shakespeare"),
+                       [q("Brevity is the soul of wit.", "William Shakespeare")])
+        XCTAssertEqual(quotes("> \"Lost time is never found again.\" -- Benjamin Franklin"),
+                       [q("Lost time is never found again.", "Benjamin Franklin")])
+        XCTAssertEqual(quotes("> “We are the music makers.” - Arthur O’Shaughnessy"),
+                       [q("We are the music makers.", "Arthur O’Shaughnessy")])
+        // Over two lines, the author after the closing mark on the last.
+        XCTAssertEqual(quotes("> “The best way out\n> is always through.” - Robert Frost"),
+                       [q("The best way out is always through.", "Robert Frost")])
+        // A hyphen in a sentence is still not an attribution, nor one after a title the quote doesn't open with.
+        XCTAssertEqual(quotes("> I came - and I saw"), [q("I came - and I saw")])
+        XCTAssertEqual(quotes("> Read “Walden” - then walk."), [q("Read “Walden” - then walk.")])
     }
 
     func testBlockquoteWithEmDashAuthor() {

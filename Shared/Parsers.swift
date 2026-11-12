@@ -151,9 +151,12 @@ enum TaskParser {
     }
 
     /// The Daily Brief ends a task with where it came from: "Reply to Sam. (Sam, email, Nov 5)" -> ("Reply to Sam.",
-    /// "Sam, email, Nov 5"). The large Today widget sets the note as a caption. Text without one comes back whole.
-    static func sourceNote(_ text: String) -> (text: String, source: String?) {
+    /// "Sam, email, Nov 5"). The large Today widget sets the note as a caption. Only the brief's tasks
+    /// (`BaroqueSettings.dailyBriefPath`) carry one, so a task from any other file, "Finish essay (draft 2)", and text
+    /// without a note come back whole.
+    static func sourceNote(_ text: String, sourcePath: String) -> (text: String, source: String?) {
         let t = text.trimmingCharacters(in: .whitespaces)
+        guard sourcePath == BaroqueSettings.dailyBriefPath else { return (t, nil) }
         guard t.hasSuffix(")"), let open = t.range(of: " (", options: .backwards) else { return (t, nil) }
         let source = String(t[open.upperBound..<t.index(before: t.endIndex)]).trimmingCharacters(in: .whitespaces)
         let head = String(t[..<open.lowerBound]).trimmingCharacters(in: .whitespaces)
@@ -221,6 +224,7 @@ enum QuoteParser {
         var calloutTitle: String?
         var skippingCallout = false           // inside a non-quote callout such as [!note]
         var inBlock: Bool { !paragraphs.isEmpty }
+        var lastAuthorless: Int?              // the quote on the line just above, in quotation marks and with no author
 
         func flush(authorBelow: String? = nil) {
             defer { paragraphs = []; calloutTitle = nil }
@@ -233,7 +237,8 @@ enum QuoteParser {
                 paras[paras.count - 1].removeLast()
                 if paras[paras.count - 1].isEmpty { paras.removeLast() }
             }
-            if author == nil, let last = paras.last?.last, let split = inlineAttribution(last) {
+            let quoted = paras.first?.first?.first.map { openingQuoteChars.contains($0) } ?? false
+            if author == nil, let last = paras.last?.last, let split = inlineAttribution(last, quoted: quoted) {
                 paras[paras.count - 1][paras[paras.count - 1].count - 1] = split.text
                 author = split.author
             }
@@ -254,6 +259,8 @@ enum QuoteParser {
 
         for line in MarkdownText.visibleLines(of: markdown) {
             let trimmed = line.text.trimmingCharacters(in: .whitespaces)
+            let authorless = lastAuthorless
+            lastAuthorless = nil
 
             if trimmed.hasPrefix(">") {
                 var content = Substring(trimmed)
@@ -283,20 +290,35 @@ enum QuoteParser {
             if trimmed.isEmpty { flush(); continue }
 
             // An attribution line directly below a blockquote belongs to it.
-            if inBlock, let a = authorFromLine(trimmed), !isBulletQuote(trimmed) {
+            if inBlock, let a = authorFromLine(trimmed), !isBulletQuote(trimmed), !isTask(trimmed) {
                 flush(authorBelow: a)
                 continue
             }
             flush()
 
+            // So does one directly below a quote in quotation marks that has no author yet: `“Text”` then `- Author`,
+            // or the author as a sub-bullet (`  * Author`).
+            let subBullet = line.text.first?.isWhitespace == true ? bulletBody(trimmed) : nil
+            if let i = authorless, let a = authorFromLine(trimmed) ?? subBullet, a.count <= 80, !isBulletQuote(trimmed), !isTask(trimmed) {
+                let cleaned = TaskParser.cleanInline(a)
+                if !cleaned.isEmpty { quotes[i].author = cleaned }
+                continue
+            }
+
             if isThematicBreak(trimmed) { continue }
             if let item = bulletBody(trimmed) {
                 let (text, author) = splitAuthor(item)
+                let before = quotes.count
                 append(text: TaskParser.cleanInline(text), author: author)
+                if author == nil, quotes.count > before, let first = item.first, openingQuoteChars.contains(first) {
+                    lastAuthorless = before
+                }
                 continue
             }
             if let line = standaloneQuote(trimmed) {
+                let before = quotes.count
                 append(text: TaskParser.cleanInline(line.text), author: line.author)
+                if line.author == nil, quotes.count > before { lastAuthorless = before }
                 continue
             }
             // Headings and prose are ignored.
@@ -341,6 +363,14 @@ enum QuoteParser {
         return body.isEmpty ? nil : body
     }
 
+    /// `- [ ] Text`: a task, never an author line.
+    private static func isTask(_ line: String) -> Bool {
+        let ns = line as NSString
+        guard let m = bulletRegex.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)) else { return false }
+        let body = ns.substring(with: m.range(at: 1))
+        return taskBoxRegex.firstMatch(in: body, range: NSRange(location: 0, length: (body as NSString).length)) != nil
+    }
+
     /// `- "Text" — Author` style bullets are quotes of their own, not an author line.
     private static func isBulletQuote(_ line: String) -> Bool {
         guard let body = bulletBody(line) else { return false }
@@ -356,6 +386,7 @@ enum QuoteParser {
 
     private static let openingQuoteChars: Set<Character> = ["\"", "“", "‘", "'", "«", "„"]
     private static let closingQuoteChars: Set<Character> = ["\"", "”", "’", "'", "»", "“"]
+    private static let doubleClosingQuotes: Set<Character> = ["\"", "”", "»", "“"]
     private static let dashSeparators = [" — ", " – ", " ― "]
     private static let allSeparators = dashSeparators + [" - ", " ~ "]
 
@@ -384,11 +415,29 @@ enum QuoteParser {
     }
 
     /// `"Well done is better than well said." — Benjamin Franklin` / `Well done. — Benjamin Franklin` on a blockquote's last line.
-    /// Only em/en dashes count, and only after closing punctuation, so "I came — and I saw" stays whole.
-    private static func inlineAttribution(_ line: String) -> (text: String, author: String)? {
+    /// Only em/en dashes count, and only after closing punctuation, so "I came — and I saw" stays whole. When the quote
+    /// is in quotation marks (`quoted`), a hyphen right after the closing mark counts too (`“Text” - Author`, the
+    /// author's own style), but not after a title inside a sentence (`Read “Walden” - then walk.`).
+    private static func inlineAttribution(_ line: String, quoted: Bool) -> (text: String, author: String)? {
+        if quoted, let split = attributionAfterQuote(line) { return split }
         let (text, author) = splitAuthor(line, separators: dashSeparators + ["—", "–", "―"])
         guard let author, author.count <= 80, let end = text.last, ".!?…\"”’»)".contains(end) else { return nil }
         return (text, author)
+    }
+
+    /// `… lost.” - Author`: a closing double quotation mark, then an author line (any dash, a hyphen included). Single
+    /// marks don't count, since in prose they're mostly apostrophes. Tries each closing mark from the end.
+    private static func attributionAfterQuote(_ line: String) -> (text: String, author: String)? {
+        var end = line.endIndex
+        while let close = line[..<end].lastIndex(where: { doubleClosingQuotes.contains($0) }) {
+            let rest = line[line.index(after: close)...].trimmingCharacters(in: .whitespaces)
+            if rest.isEmpty { return nil }
+            if close > line.startIndex, let author = authorFromLine(rest), author.count <= 80 {
+                return (String(line[...close]), author)
+            }
+            end = close
+        }
+        return nil
     }
 
     private static let quotePairs: [(Character, Character)] = [("\"", "\""), ("“", "”"), ("‘", "’"), ("'", "'"), ("«", "»"), ("„", "“")]

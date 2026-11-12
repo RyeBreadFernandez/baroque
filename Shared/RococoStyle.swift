@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // Baroque's widgets in the painted rococo of Hubert Robert's The Bathing Pool, the user's wallpaper (chosen 2026-11-04).
 // Ported from MockLab's travertine set drawn in its rococo style (MockLab/Sources/WSunArc/TVHome.swift with
@@ -32,10 +33,13 @@ struct RococoTheme {
 
     static let original = RococoTheme(name: "Current", stone: Color(hex: 0xB5A483), texture: 1, ink: Color(hex: 0x3A2D23),
                                       inkSoft: Color(hex: 0x6B5B4C), terracotta: Color(hex: 0x9C5B3D), edge: .soft, scrim: 1)
+    // Quiet's and Carved's inkSoft and terracotta were darkened on 2026-11-11 to reach 4.5:1 against the stone as it
+    // renders (its 5th and 2nd percentiles, where the brushwork and shade fall), not only against the flat colour:
+    // scripts/check_contrast.py measures them on MockLab's README renders.
     static let quiet = RococoTheme(name: "Quiet", stone: Color(hex: 0xDCD1BB), texture: 0.28, ink: Color(hex: 0x2B221B),
-                                   inkSoft: Color(hex: 0x56473A), terracotta: Color(hex: 0x8A4429), edge: .soft, scrim: 1.3)
+                                   inkSoft: Color(hex: 0x534437), terracotta: Color(hex: 0x713620), edge: .soft, scrim: 1.3)
     static let carved = RococoTheme(name: "Carved", stone: Color(hex: 0xDCD1BB), texture: 0.28, ink: Color(hex: 0x2B221B),
-                                    inkSoft: Color(hex: 0x56473A), terracotta: Color(hex: 0x8A4429), edge: .carved, scrim: 1.3)
+                                    inkSoft: Color(hex: 0x534437), terracotta: Color(hex: 0x713620), edge: .carved, scrim: 1.3)
     static let ivory = RococoTheme(name: "Ivory", stone: Color(hex: 0xEDE6D7), texture: 0.16, ink: Color(hex: 0x261E18),
                                    inkSoft: Color(hex: 0x53453A), terracotta: Color(hex: 0x86402A), edge: .crisp, scrim: 1.4)
     static let options = [original, quiet, carved, ivory]
@@ -67,21 +71,54 @@ enum RococoType {
 
 /// A rococo layout at its iPhone 17 design size, scaled to fill the widget (a point or two may be cropped at the
 /// edges on other phones; every layout keeps 14 pt clear of them).
+///
+/// On a tinted or clear home screen (accented rendering) iOS takes away the widget's background and draws everything
+/// that isn't a full-colour image in one tint, so the stone and the ink on it would come out the same colour and the
+/// words would vanish. There the frame tells its content (`rococoAccented`): the slab leaves out its stone, and the
+/// darkenings over pictures (`RococoScrim`) and the theme's edge are left out, so the words and the pictures show.
 struct RococoFrame<Content: View>: View {
     var size: BaroqueSize
     @ViewBuilder var content: Content
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.rococoAccented) private var accentedAbove
 
     var body: some View {
         let design = size.designSize
+        let accented = accentedAbove || renderingMode == .accented
         GeometryReader { geo in
             let scale = max(geo.size.width / design.width, geo.size.height / design.height)
             content
                 .frame(width: design.width, height: design.height)
-                .overlay(RococoEdge(theme: RococoTheme.current))
+                .overlay { if !accented { RococoEdge(theme: RococoTheme.current) } }
                 .scaleEffect(scale)
                 .frame(width: geo.size.width, height: geo.size.height)
         }
         .clipped()
+        .environment(\.rococoAccented, accented)
+    }
+}
+
+private struct RococoAccentedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True on a tinted or clear home screen, set by RococoFrame from WidgetKit's rendering mode (a preview can set it
+    /// to see the widgets that way). The stone and the scrims leave themselves out.
+    var rococoAccented: Bool {
+        get { self[RococoAccentedKey.self] }
+        set { self[RococoAccentedKey.self] = newValue }
+    }
+}
+
+/// A darkening laid over a picture so the words on it read. Left out on a tinted or clear home screen, where iOS would
+/// draw it in the tint, as a solid wash over the picture.
+struct RococoScrim<Content: View>: View {
+    @ViewBuilder var content: Content
+    @Environment(\.rococoAccented) private var accented
+
+    var body: some View {
+        if !accented { content }
     }
 }
 
@@ -120,9 +157,19 @@ struct RococoEdge: View {
 /// lower right).
 struct RococoSlab: View {
     var radius: CGFloat = 22
+    @Environment(\.rococoAccented) private var accented
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        if accented {
+            // Tinted or clear: no stone, so the words, drawn in the tint, read on the home screen behind.
+            Color.clear
+        } else {
+            slab(shape)
+        }
+    }
+
+    private func slab(_ shape: RoundedRectangle) -> some View {
         ZStack {
             RococoInk.stone
             Image("RococoLimestone").resizable().interpolation(.high).rococoFullColor().scaledToFill()
@@ -274,41 +321,7 @@ struct RococoArcPath: Shape {
 
 // MARK: - Pictures
 
-/// The user's repainted photographs taking turns (2026-11-08): a new one every three hours on the clock (midnight,
-/// 3, 6 …), on the large Day widget and, never the same one at once, on the Photograph widget. The images are
-/// RococoPhoto-<name> (696 x 730) and RococoPhoto-<name>-small (328 x 328), cut by scripts/export_rococo_textures.py.
-enum RococoPhotos {
-    static let hours = 3
-    /// All of them, for the Photograph widget, which has no words on it.
-    static let all = ["kings-canyon", "valley", "river", "dead-tree", "falls", "bryce", "arch", "zion", "sunset", "zion-canyon"]
-    /// The large Day widget's: landscapes with no one where the quote sits (checked by eye, by day and by night, with
-    /// MockLab's HEROES=1). The photographs of people (falls, zion, sunset, dead-tree) show only on the Photograph
-    /// widget, with nothing over them.
-    static let underWords = ["kings-canyon", "valley", "river", "bryce", "arch", "zion-canyon"]
-
-    /// Which three-hour turn of the local day `date` falls in, counted from 1970 so it keeps moving across days.
-    static func turn(_ date: Date) -> Int {
-        let local = date.timeIntervalSince1970 + Double(TimeZone.current.secondsFromGMT(for: date))
-        return Int(floor(local / Double(hours * 3600)))
-    }
-
-    /// When the next turn begins.
-    static func nextChange(after date: Date) -> Date {
-        let offset = Double(TimeZone.current.secondsFromGMT(for: date))
-        return Date(timeIntervalSince1970: Double(turn(date) + 1) * Double(hours * 3600) - offset)
-    }
-
-    static func largeName(at date: Date) -> String { underWords[turn(date) % underWords.count] }
-
-    static func large(at date: Date) -> String { "RococoPhoto-" + largeName(at: date) }
-
-    /// Half the list on from the large one, and never the same photograph.
-    static func small(at date: Date) -> String {
-        var name = all[(turn(date) + all.count / 2) % all.count]
-        if name == largeName(at: date) { name = all[(all.firstIndex(of: name)! + 1) % all.count] }
-        return "RococoPhoto-" + name + "-small"
-    }
-}
+// RococoPhotos, which photograph shows when, is in Words.swift.
 
 /// One of the repainted photographs (or the still life), filling its frame; darkened and cooled at night.
 struct RococoPicture: View {
@@ -322,7 +335,7 @@ struct RococoPicture: View {
             .rococoFullColor()
             .scaledToFill()
             .saturation(night ? 0.7 : 1)
-            .overlay(Color(hex: 0x141B26).opacity(night ? 0.45 : 0).blendMode(.multiply))
+            .overlay(RococoScrim { Color(hex: 0x141B26).opacity(night ? 0.45 : 0).blendMode(.multiply) })
             .clipped()
     }
 }
@@ -330,8 +343,10 @@ struct RococoPicture: View {
 /// The darkened corners of an old canvas, so cream type reads on a bright sky.
 struct RococoCorners: View {
     var body: some View {
-        RadialGradient(colors: [.clear, RococoInk.umber.opacity(0.55)], center: UnitPoint(x: 0.45, y: 0.5),
-                       startRadius: 110, endRadius: 320)
+        RococoScrim {
+            RadialGradient(colors: [.clear, RococoInk.umber.opacity(0.55)], center: UnitPoint(x: 0.45, y: 0.5),
+                           startRadius: 110, endRadius: 320)
+        }
     }
 }
 
@@ -342,77 +357,4 @@ extension Image {
     }
 }
 
-// MARK: - Words
-
-enum RococoWords {
-    static func month(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "MMMM"
-        return f.string(from: date)
-    }
-
-    static func day(_ date: Date) -> String { String(Calendar.current.component(.day, from: date)) }
-
-    /// "4:58": a twelve-hour clock whatever the system setting.
-    static func clock(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "h:mm"
-        return f.string(from: date)
-    }
-
-    static func temp(_ w: WeatherSnapshot?) -> String {
-        guard let w else { return "—" }
-        return "\(Int(w.temperature.rounded()))°"
-    }
-
-    static func more(_ n: Int) -> String { "+ \(n) more" }
-
-    /// A task's due note against the snapshot's day: "2d late", "today", "tomorrow", otherwise "the 9th" (no weekday
-    /// names). Nil when undated.
-    static func due(_ task: TaskItem, now: Date) -> String? {
-        guard let due = task.due else { return nil }
-        let cal = Calendar.current
-        let days = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: due)).day ?? 0
-        switch days {
-        case ..<0: return "\(-days)d late"
-        case 0: return "today"
-        default: return dayName(due, from: now)
-        }
-    }
-
-    /// Today's sunrise or sunset moved onto the snapshot's day.
-    static func today(_ d: Date, at now: Date) -> Date {
-        let cal = Calendar.current
-        return cal.date(bySettingHour: cal.component(.hour, from: d), minute: cal.component(.minute, from: d), second: 0, of: now) ?? d
-    }
-
-    /// "10 h 44 m": sunrise to sunset.
-    static func daylight(_ snap: DaySnapshot) -> String? {
-        guard let w = snap.weather, let rise = w.sunrise, let set = w.sunset else { return nil }
-        let m = max(0, Int((today(set, at: snap.date).timeIntervalSince(today(rise, at: snap.date)) / 60).rounded()))
-        return m >= 60 ? "\(m / 60) h \(m % 60) m" : "\(m) m"
-    }
-
-    /// "tomorrow", then "the 6th", "the 7th": no weekday names.
-    static func dayName(_ date: Date, from now: Date) -> String {
-        let cal = Calendar.current
-        let offset = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: date)).day ?? 0
-        if offset == 1 { return "tomorrow" }
-        let n = cal.component(.day, from: date)
-        let suffix: String
-        switch (n % 10, n % 100) {
-        case (_, 11...13): suffix = "th"
-        case (1, _): suffix = "st"
-        case (2, _): suffix = "nd"
-        case (3, _): suffix = "rd"
-        default: suffix = "th"
-        }
-        return "the \(n)\(suffix)"
-    }
-
-    /// Whether a line is short enough to set in script (Savoye only reads at a large size).
-    static func fitsScript(_ text: String) -> Bool {
-        text.count <= 26 && text.split(separator: " ").count <= 5
-    }
-}
+// The widgets' words (RococoWords) are in Words.swift, which is Foundation only so the tests can read it.

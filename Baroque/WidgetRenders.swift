@@ -6,7 +6,9 @@ import UIKit
 // Launch the app with -renderWidgets and it writes exact-size PNGs (scale 3) of every widget family and data state
 // at three phone sizes into Documents/renders, plus fit.txt. The rococo widgets are fixed layouts at the iPhone 17
 // design sizes that RococoFrame scales to fill each widget, so fit.txt notes the scale and how much is cropped per
-// size instead of measuring text. Pull them with:
+// size instead of measuring text. At the iPhone 17 size, "accented-*" imitates a tinted home screen (no stone or
+// scrims, RococoFrame's accented mode, and the words in one light tint on a dark ground, as iOS draws them), and
+// "ticks-today-*" shades the tap target round each task's ring. Pull them with:
 //   xcrun simctl get_app_container <udid> com.ryanfernandez.terra data
 enum WidgetRenders {
     struct Device {
@@ -58,12 +60,14 @@ enum WidgetRenders {
         try? fm.removeItem(at: dir)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        let days = dayStates, quotes = quoteStates, batteries = batteryStates
+        let days = dayStates, quotes = quoteStates, batteries = batteryStates, photoTimes = photographTimes
         var report = [
-            "Rococo renders: \(devices.count) sizes x (Day S/M/L and Today S/M: \(days.count) states; Quote S/M/L: \(quotes.count);"
-                + " Battery S: \(batteries.count)) at 3x.",
+            "Rococo renders: \(devices.count) sizes x (Day S/M/L and Today S/M/L: \(days.count) states; Quote S/M/L: \(quotes.count);"
+                + " Battery S: \(batteries.count); Still Life S/L; Photograph S: \(photoTimes.count) times) at 3x,"
+                + " and the iPhone 17 size on a tinted home screen (accented-*).",
             "Day states: " + days.map(\.name).joined(separator: ", "),
             "Quote states: " + quotes.map(\.name).joined(separator: ", "),
+            "Photograph times: " + photoTimes.map { "\($0.name) (\(RococoPhotos.small(at: $0.date)))" }.joined(separator: ", "),
             "Each widget is laid out at its iPhone 17 design size and scaled uniformly by RococoFrame to fill it:"
         ]
         for device in devices {
@@ -74,33 +78,89 @@ enum WidgetRenders {
                     let quote = DemoData.quotes[2]
                     write(RococoDayView(snapshot: state.snapshot, quote: quote, size: family.size), size: size,
                           name: "\(device.name)-day-\(family.name)-\(state.name)", dir: dir)
-                    if family.size != .large {
-                        write(RococoTodayView(snapshot: state.snapshot, size: family.size), size: size,
-                              name: "\(device.name)-today-\(family.name)-\(state.name)", dir: dir)
-                    }
+                    write(RococoTodayView(snapshot: state.snapshot, size: family.size), size: size,
+                          name: "\(device.name)-today-\(family.name)-\(state.name)", dir: dir)
                 }
                 for state in quotes {
                     let view = RococoQuoteView(quote: state.quote, size: family.size, date: state.date, error: state.error)
                     write(view, size: size, name: "\(device.name)-quote-\(family.name)-\(state.name)", dir: dir)
                 }
+                // Still Life and Photograph draw their picture edge to edge and nothing else (BaroqueWidgets.swift).
+                if family.size != .medium {
+                    write(RococoPicture(name: family.size == .large ? "RococoStillLifeLarge" : "RococoStillLife"), size: size,
+                          name: "\(device.name)-still-life-\(family.name)", dir: dir)
+                }
                 if family.size == .small {
                     for (name, reading) in batteries {
                         write(RococoBatteryView(reading: reading), size: size, name: "\(device.name)-battery-small-\(name)", dir: dir)
                     }
+                    for time in photoTimes {
+                        write(RococoPicture(name: RococoPhotos.small(at: time.date)), size: size,
+                              name: "\(device.name)-photograph-small-\(time.name)", dir: dir)
+                    }
                 }
             }
         }
+        writeAccented(dir: dir)
+        writeTickAreas(dir: dir)
         try? report.joined(separator: "\n").write(to: dir.appendingPathComponent("fit.txt"), atomically: true, encoding: .utf8)
         try? "done".write(to: dir.appendingPathComponent("done.txt"), atomically: true, encoding: .utf8)
     }
 
+    /// A tinted home screen, imitated: RococoFrame's accented mode (no stone, no scrims), every ink one light tint, on a
+    /// dark ground. iOS draws all but the full-colour pictures in its tint there, so this shows whether the words
+    /// survive (F46); the real look is checked in the simulator (Customize › Tinted and Clear).
+    @MainActor
+    private static func writeAccented(dir: URL) {
+        let keep = RococoTheme.current
+        defer { RococoTheme.current = keep }
+        var tinted = keep
+        let tint = Color(hex: 0xE4ECF4)
+        tinted.ink = tint
+        tinted.inkSoft = tint
+        tinted.terracotta = tint
+        RococoTheme.current = tinted
+        let device = devices[0]
+        let demo = DemoData.day(now: morning)
+        let ground = Color(hex: 0x2A3440)
+        for family in families {
+            let size = device.size(family.size)
+            var views: [(String, AnyView)] = [
+                ("day", AnyView(RococoDayView(snapshot: demo, quote: DemoData.quotes[0], size: family.size))),
+                ("today", AnyView(RococoTodayView(snapshot: demo, size: family.size))),
+                ("quote", AnyView(RococoQuoteView(quote: DemoData.quotes[1], size: family.size, date: morning, error: nil)))
+            ]
+            if family.size == .small {
+                views.append(("battery", AnyView(RococoBatteryView(reading: BatteryReading(level: 0.82, charging: false, at: morning)))))
+            }
+            for (kind, view) in views {
+                write(view.environment(\.rococoAccented, true), size: size,
+                      name: "\(device.name)-accented-\(kind)-\(family.name)", dir: dir, ground: ground)
+            }
+        }
+    }
+
+    /// The Today widget at the iPhone 17 size with each ring's tap target shaded ("ticks-*"): what the widget's tick
+    /// button wraps, at least 28 points square, while the layout stays as it is.
+    @MainActor
+    private static func writeTickAreas(dir: URL) {
+        let device = devices[0]
+        let shade: (TaskItem, AnyView) -> AnyView = { _, ring in
+            AnyView(ring.background(Color(hex: 0x3D7BD9).opacity(0.35)).border(Color(hex: 0x3D7BD9), width: 0.5))
+        }
+        for family in families {
+            write(RococoTodayView(snapshot: DemoData.day(now: morning), size: family.size, tick: shade), size: device.size(family.size),
+                  name: "\(device.name)-ticks-today-\(family.name)", dir: dir)
+        }
+    }
+
     /// The widget at its exact size and rounded shape, as the home screen shows it.
     @MainActor
-    private static func write<V: View>(_ view: V, size: CGSize, name: String, dir: URL) {
+    private static func write<V: View>(_ view: V, size: CGSize, name: String, dir: URL, ground: Color = RococoInk.stone) {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
         let tile = view
             .frame(width: size.width, height: size.height)
-            .background(RococoInk.stone)
+            .background(ground)
             .clipShape(shape)
             .containerShape(shape)
             .environment(\.colorScheme, .light)
@@ -124,7 +184,7 @@ enum WidgetRenders {
 
     // MARK: Data states
 
-    struct DayState { var name: String; var snapshot: DaySnapshot; var settings: BaroqueSettings }
+    struct DayState { var name: String; var snapshot: DaySnapshot }
     struct QuoteState { var name: String; var quote: Quote; var date: Date; var error: String? }
 
     static let noToken = "No GitHub token. Add one in the Baroque app."
@@ -134,7 +194,6 @@ enum WidgetRenders {
     static var morning: Date { Calendar.current.date(bySettingHour: 9, minute: 41, second: 0, of: Date()) ?? Date() }
 
     static var dayStates: [DayState] {
-        let settings = BaroqueSettings.default
         let demo = DemoData.day()
 
         var cached = demo
@@ -148,9 +207,6 @@ enum WidgetRenders {
         var noWeather = demo
         noWeather.weather = nil
         noWeather.weatherError = offline
-
-        var fewer = settings
-        fewer.maxTasks = 2
 
         // Worst case: a two-digit date, long month, three-digit temperature, long condition, more tasks than fit,
         // long titles and a long error.
@@ -176,6 +232,18 @@ enum WidgetRenders {
             taskError: offline,
             weatherError: nil)
 
+        // Tasks shaped like the Daily Brief's, each ending with where it came from (the large Today sets that as a
+        // caption), and one from another file whose brackets are part of the task. Made-up details.
+        var brief = demo
+        brief.tasks = [
+            TaskItem(text: "Send the garden club the spring planting plan. (Sam, email, Nov 5)", due: days(-1), priority: .none,
+                     sourcePath: BaroqueSettings.dailyBriefPath, lineNumber: 9),
+            TaskItem(text: "Reply about the hike: carpool leaves at 7:00 AM. (Hiking club, message, Nov 5)", due: days(1), priority: .none,
+                     sourcePath: BaroqueSettings.dailyBriefPath, lineNumber: 10),
+            TaskItem(text: "Return the library hold.", due: days(5), priority: .none, sourcePath: BaroqueSettings.dailyBriefPath, lineNumber: 11),
+            TaskItem(text: "Finish essay (draft 2)", due: days(12), priority: .none, sourcePath: "Tasks/Master Task List.md", lineNumber: 4)
+        ]
+
         // The sky at different times and in different weather.
         func sky(_ name: String, code: Int, hour: Int, minute: Int = 0) -> DayState {
             var snap = demo
@@ -184,18 +252,18 @@ enum WidgetRenders {
                                            isDay: (7..<17).contains(hour),
                                            sunrise: cal.date(bySettingHour: 6, minute: 14, second: 0, of: today),
                                            sunset: cal.date(bySettingHour: 16, minute: 58, second: 0, of: today))
-            return DayState(name: name, snapshot: snap, settings: settings)
+            return DayState(name: name, snapshot: snap)
         }
 
         return [
-            DayState(name: "demo", snapshot: demo, settings: settings),
-            DayState(name: "morning", snapshot: DemoData.day(now: morning), settings: settings),
-            DayState(name: "cached", snapshot: cached, settings: settings),
-            DayState(name: "fresh", snapshot: fresh, settings: settings),
-            DayState(name: "empty", snapshot: empty, settings: settings),
-            DayState(name: "no-weather", snapshot: noWeather, settings: settings),
-            DayState(name: "max-tasks-2", snapshot: demo, settings: fewer),
-            DayState(name: "stress", snapshot: stress, settings: settings),
+            DayState(name: "demo", snapshot: demo),
+            DayState(name: "morning", snapshot: DemoData.day(now: morning)),
+            DayState(name: "cached", snapshot: cached),
+            DayState(name: "fresh", snapshot: fresh),
+            DayState(name: "empty", snapshot: empty),
+            DayState(name: "no-weather", snapshot: noWeather),
+            DayState(name: "brief", snapshot: brief),
+            DayState(name: "stress", snapshot: stress),
             sky("sky-partly", code: 2, hour: 11),
             sky("sky-rain", code: 63, hour: 13),
             sky("sky-snow", code: 73, hour: 14),
@@ -204,6 +272,11 @@ enum WidgetRenders {
             sky("sky-clear-dusk", code: 0, hour: 16, minute: 45),
             sky("sky-clear-night", code: 0, hour: 22)
         ]
+    }
+
+    /// Two turns of the Photograph widget: this morning's photograph and tonight's.
+    static var photographTimes: [(name: String, date: Date)] {
+        [("morning", morning), ("night", Calendar.current.date(bySettingHour: 22, minute: 0, second: 0, of: Date()) ?? Date())]
     }
 
     static var batteryStates: [(String, BatteryReading)] {

@@ -73,11 +73,32 @@ final class DailyNotePathTests: XCTestCase {
             "Reply to Sam about the seed order, part B. (Sam, email reply Nov 5)",
         ])
         XCTAssertTrue(tasks.allSatisfy { $0.due == nil })
-        XCTAssertEqual(TaskParser.sourceNote(tasks[1].text).text, "Reply to Sam about the seed order, part B.")
-        XCTAssertEqual(TaskParser.sourceNote(tasks[1].text).source, "Sam, email reply Nov 5")
-        XCTAssertNil(TaskParser.sourceNote("Pump tires, get gas").source)
-        XCTAssertNil(TaskParser.sourceNote("Call (maybe) the dentist").source)   // a parenthesis inside, not a note
+        let path = BaroqueSettings.dailyBriefPath
+        XCTAssertEqual(TaskParser.sourceNote(tasks[1].text, sourcePath: tasks[1].sourcePath).text, "Reply to Sam about the seed order, part B.")
+        XCTAssertEqual(TaskParser.sourceNote(tasks[1].text, sourcePath: tasks[1].sourcePath).source, "Sam, email reply Nov 5")
+        XCTAssertNil(TaskParser.sourceNote("Pump tires, get gas", sourcePath: path).source)
+        XCTAssertNil(TaskParser.sourceNote("Call (maybe) the dentist", sourcePath: path).source)   // a parenthesis inside, not a note
         // Undated, so they show while undated tasks are included (the default), in the brief's order.
         XCTAssertEqual(TaskParser.todaysAgenda(tasks, includeUndated: true, limit: 5).count, 2)
+    }
+
+    /// Only the Daily Brief's tasks end with a source note; brackets at the end of a task from any other file are
+    /// part of the task.
+    func testSourceNoteOnlyOnTheBrief() {
+        let brief = BaroqueSettings.dailyBriefPath
+        XCTAssertEqual(brief, "Daily Brief/Today.md")
+        let split = TaskParser.sourceNote("Reply about the plan. (Sam, email, Nov 5)", sourcePath: brief)
+        XCTAssertEqual(split.text, "Reply about the plan.")
+        XCTAssertEqual(split.source, "Sam, email, Nov 5")
+
+        for path in ["Tasks/Master Task List.md", "daily note/11.11.2026 - Wednesday.md", "Daily Brief/Archive.md"] {
+            let whole = TaskParser.sourceNote("Finish essay (draft 2)", sourcePath: path)
+            XCTAssertEqual(whole.text, "Finish essay (draft 2)", path)
+            XCTAssertNil(whole.source, path)
+        }
+        // Parsed from another file, the task keeps its brackets.
+        let task = tasks("- [ ] Finish essay (draft 2) 📅 2026-11-12", path: "Tasks/Master Task List.md")[0]
+        XCTAssertEqual(TaskParser.sourceNote(task.text, sourcePath: task.sourcePath).text, "Finish essay (draft 2)")
+        XCTAssertNil(TaskParser.sourceNote(task.text, sourcePath: task.sourcePath).source)
     }
 }
