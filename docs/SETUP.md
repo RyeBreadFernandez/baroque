@@ -30,6 +30,9 @@ Baroque reads your Obsidian vault from a GitHub repository; it can be private.
    ```sh
    scripts/install_on_iphone.sh
    ```
+   - It builds for the phone itself, so a phone that's new to your team is registered with it.
+   - If the phone can't be reached (locked, asleep or still preparing), it builds for any iPhone instead and says so. If the phone is new to your team, open Xcode once and press Run on it to register it, then run the script again.
+   - With more than one phone paired, pick one by name: `PHONE="My iPhone" scripts/install_on_iphone.sh`.
 8. The first time, trust yourself on the phone: **Settings › General › VPN & Device Management**, your Apple ID, **Trust**.
 
 On a free Apple ID the app stops opening after seven days. Run the script again; nothing is lost.
