@@ -62,27 +62,31 @@ Neighbouring icons alternate light and dark stone. The app icon is the Day widge
 | Image | Size | Used by |
 | --- | --- | --- |
 | `RococoLimestone` | 480 × 480 | the stone widgets |
-| `RococoHero` | 696 × 730 | large Day (a repainted Kings Canyon) |
+| `RococoPhoto-<name>` | 696 × 730 | large Day: the repainted photographs, taking turns every three hours |
+| `RococoPhoto-<name>-small` | 328 × 328 | Photograph: the same photographs, cut square |
 | `RococoTall`, `RococoWide`, `RococoSquare` | 696 × 730, 696 × 328, 328 × 328 | Quote, large to small |
 | `RococoFlowers` | 304 × 296 | medium Today's panel |
 | `RococoStillLife`, `RococoStillLifeLarge` | 328 × 328, 696 × 730 | Still Life |
 
 WidgetKit refuses a widget whose images add up to too many pixels, so no widget uses more than one large image. The same script writes the app icon, the 24 home screen icons (512 px, opaque) and the wallpaper into `Baroque/Assets.xcassets`.
 
-## The README's pictures
+## The README's picture
 
-The README's pictures use demo data only:
+The README shows one picture, `docs/images/home-screen.jpg`, made from demo data only:
 
 ```sh
 cd MockLab && README=1 swift run --scratch-path .build-smalls RSmalls
-cd .. && PAGE1=… PAGE2=… BRIEF=… python3 scripts/readme_images.py
+cd .. && PAGE1=… PAGE2=… python3 scripts/readme_images.py
 ```
 
-How each picture is made:
-- **The widget renders:** MockLab's `RSmalls` renders the shipped widget views, in the design sizes and in the sizes the author's phone draws them.
-- **The home screen pictures:** `readme_images.py` lays those renders onto screenshots of the phone (wallpaper, icons, dock).
-- **The widget sheet and the design-lab sheet:** also from `readme_images.py`.
-- **The Brief page:** from the simulator, launched with `-briefFile examples/Daily\ Brief/Today.md -openBrief`.
+How it's made:
+- **The widget renders:** MockLab's `RSmalls` renders the shipped widget views with demo data, in the sizes the author's phone draws them.
+- **The home screen:** `readme_images.py` lays those renders onto two screenshots of the phone's home screen pages (wallpaper, icons, dock), given as `PAGE1` and `PAGE2`.
+
+With `--all`, the script also makes the three pictures the README no longer shows, which stay in `docs/images/`:
+- `widgets.jpg`: every widget at its design size on *The Bathing Pool*;
+- `design-lab.jpg`: looks explored in MockLab on the way to this one;
+- `brief.jpg`: the Brief page, from a simulator screenshot taken after launching with `-briefFile examples/Daily\ Brief/Today.md -openBrief`. Only `--all` needs it, given as `BRIEF`.
 
 ## Credits
 

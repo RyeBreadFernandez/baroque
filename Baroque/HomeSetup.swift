@@ -11,6 +11,18 @@ import UIKit
 //   3. the widgets and the layout: HomePlan draws the dock and the pages.
 // scripts/mirror_setup.py does steps 1 and 3 through iPhone Mirroring.
 
+/// The apps on the author's home screen, in order (the dock, then pages one and two), and the name of each one's icon
+/// in Assets.xcassets/HomeIcons. A plain enum rather than statics on a view, so the icon export on a background queue
+/// and the debug launch can read it off the main actor.
+enum HomeIcons {
+    static let apps = ["Claude", "Messages", "Safari", "Obsidian",
+                       "Gmail", "Photos", "Camera", "YouTube", "Settings", "Spotify", "Maps", "Calendar",
+                       "Weather", "AllTrails", "Uber Eats", "Netflix", "Equinox", "Find My", "Slack", "Clock",
+                       "Wallet", "App Store", "Files", "Venmo"]
+
+    static func asset(_ app: String) -> String { "Icon" + app.replacingOccurrences(of: " ", with: "") }
+}
+
 /// The 24 home screen icons as files ("Baroque Gmail.png" and so on) in the app's Documents, which the Files app shows
 /// under On My iPhone > Baroque > Home screen icons.
 enum IconFiles {
@@ -19,32 +31,75 @@ enum IconFiles {
             .appendingPathComponent("Home screen icons", isDirectory: true)
     }
 
+    /// Writes any icon that's missing, and every icon again when the app's version has changed since they were written
+    /// (a new version may bring new icons). The version is kept in a marker file outside Documents, so Files never
+    /// shows it, and it's written only once every icon is, so a failed write is tried again on the next launch.
     static func export() {
         guard let folder else { return }
-        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        for app in ContentView.homeIcons {
+        let files = FileManager.default
+        try? files.createDirectory(at: folder, withIntermediateDirectories: true)
+        let current = appVersion
+        let stale = (marker.flatMap { try? String(contentsOf: $0, encoding: .utf8) }) != current
+        var failed = false
+        for app in HomeIcons.apps {
             let file = folder.appendingPathComponent("Baroque \(app).png")
-            guard !FileManager.default.fileExists(atPath: file.path),
-                  let data = UIImage(named: ContentView.iconAsset(app))?.pngData() else { continue }
-            try? data.write(to: file)
+            guard stale || !files.fileExists(atPath: file.path) else { continue }
+            do {
+                guard let data = UIImage(named: HomeIcons.asset(app))?.pngData() else { failed = true; continue }
+                try data.write(to: file, options: .atomic)
+            } catch {
+                failed = true
+            }
+        }
+        if stale, !failed, let marker {
+            try? files.createDirectory(at: marker.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? current.write(to: marker, atomically: true, encoding: .utf8)
         }
     }
 
     /// The folder in the Files app.
     static var filesURL: URL? { folder.flatMap { URL(string: "shareddocuments://" + $0.path) } }
+
+    /// The version the icon files were last written by, in Application Support.
+    private static var marker: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("Home screen icons version")
+    }
+
+    /// The version and build, for example "1.1.0 (2)": a bump of either rewrites the icons.
+    private static var appVersion: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
+    }
 }
 
-/// The 512 px icons as small thumbnails for the app's own lists, made once and kept: decoding 50 full icons to show
-/// them at 34 points took about 50 MB and stalled scrolling.
+/// The 512 px icons as thumbnails for the app's own lists, made once per size and kept: decoding 50 full icons to show
+/// them at 34 points took about 50 MB and stalled scrolling. Each is cut at the size it's shown, in pixels (the points
+/// times the screen's scale), so it stays sharp wherever it's drawn.
+@MainActor
 enum IconThumbnail {
     private static let cache = NSCache<NSString, UIImage>()
 
-    static func image(_ asset: String) -> Image {
-        if let hit = cache.object(forKey: asset as NSString) { return Image(uiImage: hit) }
-        guard let full = UIImage(named: asset),
-              let thumb = full.preparingThumbnail(of: CGSize(width: 144, height: 144)) else { return Image(asset) }
-        cache.setObject(thumb, forKey: asset as NSString)
+    /// `points` is the side it's drawn at. The default, 48, is the old fixed size (144 px on a 3x screen), until every
+    /// caller passes its own.
+    static func image(_ asset: String, points: CGFloat = 48) -> Image {
+        let pixels = (points * screenScale).rounded(.up)
+        let key = "\(asset)@\(Int(pixels))" as NSString
+        if let hit = cache.object(forKey: key) { return Image(uiImage: hit) }
+        guard let full = UIImage(named: asset) else { return Image(asset) }
+        // No bigger than the icon itself.
+        let side = min(pixels, full.size.width * full.scale)
+        guard let thumb = full.preparingThumbnail(of: CGSize(width: side, height: side)) else { return Image(asset) }
+        cache.setObject(thumb, forKey: key)
         return Image(uiImage: thumb)
+    }
+
+    /// Pixels per point on the app's screen.
+    private static var screenScale: CGFloat {
+        let scene = UIApplication.shared.connectedScenes.lazy.compactMap { $0 as? UIWindowScene }.first
+        return max(scene?.screen.scale ?? UITraitCollection.current.displayScale, 1)
     }
 }
 
@@ -149,7 +204,7 @@ struct HomePlan: View {
         var side: CGFloat
 
         var body: some View {
-            IconThumbnail.image("Icon" + name.replacingOccurrences(of: " ", with: ""))
+            IconThumbnail.image(HomeIcons.asset(name), points: side)
                 .resizable()
                 .frame(width: side, height: side)
                 .clipShape(RoundedRectangle(cornerRadius: side * 0.234, style: .continuous))

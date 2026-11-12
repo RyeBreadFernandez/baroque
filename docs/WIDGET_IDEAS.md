@@ -34,6 +34,7 @@ r/iOSsetups favours right now is unverified. Reference pins and thumbnails were 
    - Failed writes, including offline ones, wait and retry.
    - Needs the write token and the sync check above.
    - Effort: M.
+   - Built on 2026-11-11, on every Today size and on the Brief page: see "Writing to the vault" in [ARCHITECTURE.md](ARCHITECTURE.md#writing-to-the-vault).
 4. **Salon, a painting of the day** (S/M/L). Rococo paintings and flower still lifes from the Art Institute of Chicago, with title, artist and year, in a limestone niche (no gilt frame). Effort: S.
 5. **Quarter and deadlines** (S, Lock Screen). "Week 6 of 10 · Fall" and the nearest dated task with the days left; a carved hourglass. Effort: S.
 
