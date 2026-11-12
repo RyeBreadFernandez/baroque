@@ -11,7 +11,8 @@ Baroque reads your Obsidian vault from a GitHub repository; it can be private.
    - **A quotes file:** blockquotes, bullets or lines in quotation marks.
 3. Make a token: on github.com go to **Settings › Developer settings › Personal access tokens › Fine-grained tokens › Generate new token**.
    - Under **Repository access**, choose **Only select repositories** and pick your vault.
-   - Under **Permissions › Repository permissions**, set **Contents** to **Read-only**. That's all it needs.
+   - Under **Permissions › Repository permissions**, set **Contents** to **Read and write**, so a task you tick in Baroque is ticked in the vault too. **Read-only** is enough if you only want to read: everything works but ticking.
+   - You'll paste the token into Baroque below. On the iPhone it's kept only in the Keychain.
 
 ## 2. Build and install
 
@@ -76,6 +77,16 @@ It needs:
 - **The Mac to itself:** it takes over the mouse while it runs.
 
 It never types a passcode or a token, and it never deletes anything of yours. See its docstring for what it can do and what mirroring allows.
+
+## Ticking tasks off
+
+Tap a task's ring on the Today widget or on the Daily Brief page to tick it; on the page, tap it again to untick it. Baroque writes the tick into the note the task came from, the way the Obsidian Tasks plugin does: `- [ ]` becomes `- [x]`, and the line ends with ✅ and today's date.
+
+- **The token needs Read and write.** With a read-only token the task stays ticked in Baroque, with a note that the token can only read. Make a token as in section 1, step 3, with **Contents** set to **Read and write**, paste it in the app and tap **Save & Refresh**. The waiting ticks are written then.
+- **Offline.** A tick made offline says "Not saved yet: will retry", and is written the next time the app opens, on Save & Refresh, or when a widget refreshes.
+- **Ticks stay ticked.** If your morning brief rewrites `Today.md` and lists a ticked task again, Baroque keeps it ticked and ticks it in the note again. A new task worded exactly like one you ticked shows as ticked too; untick it once and it stays open.
+- **In Obsidian.** The tick arrives the next time Obsidian Git pulls. If you edit the same line on your Mac before then, Obsidian Git may report a merge conflict.
+- **"This task changed in the vault."** The line was edited or moved since Baroque read it. Pull down to refresh, then tick it again.
 
 ## Troubleshooting
 

@@ -5,7 +5,7 @@ Baroque is three things that ship together, plus two that don't:
 | Part | What it is | Where |
 | --- | --- | --- |
 | The app | Settings, the token, live widget previews, the Daily Brief page, home screen setup | `Baroque/` |
-| The widget extension | Five widgets and their timelines | `BaroqueWidget/` |
+| The widget extension | Six widgets and their timelines | `BaroqueWidget/` |
 | Shared code | Only what both need: models, parsers, the GitHub and weather clients, the loader and cache, the rococo views | `Shared/`, compiled into both |
 | Parser tests | A Swift package that tests the real `Shared/` parsers through symlinks | `ParserTests/` |
 | The design lab | A macOS Swift package that renders widget looks as images | `MockLab/` |
@@ -37,7 +37,7 @@ sequenceDiagram
 
 ### Reading the vault
 
-The vault is an Obsidian folder that the Obsidian Git plugin pushes to a private GitHub repository. `GitHubClient` fetches one file at a time through the Contents API with `Accept: application/vnd.github.raw+json`. That returns the raw Markdown for private repositories, given a fine-grained token with read-only Contents permission on that one repository. Paths are percent-encoded segment by segment, so folders with spaces (`Daily Brief/Today.md`) work.
+The vault is an Obsidian folder that the Obsidian Git plugin pushes to a private GitHub repository. `GitHubClient` fetches one file at a time through the Contents API with `Accept: application/vnd.github.raw+json`. That returns the raw Markdown for private repositories, given a fine-grained token with Contents permission on that one repository: Read-only is enough to read, and ticking tasks needs Read and write (see [Writing to the vault](#writing-to-the-vault)). Paths are percent-encoded segment by segment, so folders with spaces (`Daily Brief/Today.md`) work.
 
 `Parsers.swift` holds two parsers and the agenda:
 
@@ -51,9 +51,22 @@ The vault is an Obsidian folder that the Obsidian Git plugin pushes to a private
   - bullets (`- "text" — Author`);
   - lines that open with a quotation mark (`“text” - Author`).
 
-  Headings and other prose are ignored, so the quotes file can be organised freely.
+  An author line (`- Author`) directly under a quote that has none becomes its author. Headings and other prose are ignored, so the quotes file can be organised freely. The widgets show the author under the quote (the Quote widget at every size, and the large Day); a quote with no author in the file shows none, as nothing is guessed.
 
 The task paths are a setting: one vault path per line, where `{daily}` expands to today's daily note (`daily note/MM.dd.yyyy - EEEE.md` by default). The default is the Daily Brief.
+
+### Writing to the vault
+
+Tasks can be ticked off in two places: on the Daily Brief page, where each task's ring is a button (tap again to untick), and on the Today widget at every size, where the ring is an App Intent button (`ToggleTaskIntent`) and the rest of the widget still opens the page. Both go through `TaskSync`.
+
+- **What's written.** The tick goes to the file and line the task came from (for the brief's tasks, `Daily Brief/Today.md`), in the Obsidian Tasks convention: `- [ ]` becomes `- [x]` and ` ✅ YYYY-MM-DD` is added, before a trailing `^block-id` if there is one. Unticking reverses both. The indentation and the rest of the line stay as they were. `TaskToggle.apply` finds the line by its exact text, preferring the line number it was read from. If the line is gone or appears twice, nothing is written and the page says the task changed in the vault.
+- **How.** `GitHubClient.fetchFile` reads the file and its `sha` through the Contents API, and `updateFile` sends the new text back with that `sha` as a commit, `Baroque: done "<the task's first 50 characters>"` (or `undone`). If the file changed in between (409 or 422), it fetches, ticks and tries once more. A 403 or 404 on the write means the token can only read; the app says so and doesn't retry.
+- **At once, then saved.** The ring fills and the task is struck out straight away, with "Saving…" under it until the write is done. The tick is remembered and the task leaves the cached agenda first, so the Today widgets redraw without it even offline. A write that fails waits in `Store.pendingToggles` ("Not saved yet: will retry") and is tried again when the app comes to the front, on Save & Refresh, and when a widget loads the day. Taps on the same task merge: a tick and then an untick cancel out.
+- **Ticks stay ticked.** The morning brief rewrites `Today.md` every day and may list a ticked task again, unticked. `Store.doneTasks` remembers each tick (the newest 500): its file, the day, and a key made from the task's text without the checkbox, the ✅ date, the priority and due markers and extra spaces. An open task whose key is remembered for the same file counts as done: the widgets leave it out, the Brief page shows it ticked, and a tick is queued so the file is ticked again. Unticking a task forgets it.
+- **The known limit.** A new task worded exactly like a ticked one shows as ticked. Untick it once and it stays open. The brief's source notes usually make the wording unique.
+- **Reaching Obsidian.** The commit lands in the vault's GitHub repository, and Obsidian has it the next time Obsidian Git pulls (on a schedule, and on startup). Editing the same line on the Mac before that pull can cause a merge conflict there.
+
+Ticking needs a fine-grained token with **Contents: Read and write** on the vault's repository ([SETUP.md](SETUP.md#ticking-tasks-off)). Tests use a stubbed `URLProtocol`, never a real repository.
 
 ### Weather
 
@@ -69,13 +82,17 @@ It fetches once and serves every widget. Day and Today share a provider, and iOS
 
 | Key | Contents |
 | --- | --- |
-| `baroque.settings` | `BaroqueSettings`: repository, paths, location, units, limits |
+| `baroque.settings` | `BaroqueSettings`: repository, paths, location, units, the quote rotation, the Obsidian vault's name |
 | `baroque.daySnapshot` | weather, the agenda and any errors, with the time of the fetch |
 | `baroque.quoteSnapshot` | the parsed quotes |
 | `baroque.quoteOffset` | how far the next-quote button has moved the rotation |
 | `baroque.brief` | the last Daily Brief fetched in full |
+| `baroque.pendingToggles` | ticks and unticks not yet written to the vault |
+| `baroque.doneTasks` | the ticks remembered so a task the brief lists again stays ticked |
 
-They live in the App Group's `UserDefaults` (`group.com.ryanfernandez.terra`). Settings decode field by field, so a field added in a later version takes its default instead of resetting what was entered. The token is in the Keychain, in an access group both targets share, and falls back to the App Group's defaults on the simulator, where there's no access group without signing.
+They live in the App Group's `UserDefaults` (`group.com.ryanfernandez.terra`). Settings decode field by field, so a field added in a later version takes its default instead of resetting what was entered, and a field no longer used, like the old "Max tasks shown" (`maxTasks`), still decodes.
+
+The token is kept in the Keychain, in an access group both targets share. On an iPhone it's never written anywhere else: if the Keychain refuses it, the app says "Couldn't save the token to the Keychain" rather than keep a plain copy, and a copy an older version left in the App Group's defaults is moved into the Keychain at launch (the old copy is removed once the Keychain one reads back). Only the simulator, where there's no shared access group without signing, keeps it in the App Group's defaults.
 
 ### Offline and errors
 
@@ -90,7 +107,7 @@ So a widget that can't reach the network still draws, and says why it's stale.
 | Kind | Provider | Refresh | Tap |
 | --- | --- | --- | --- |
 | `BaroqueDay` | `DayProvider` | every 30 min and at midnight | opens the app |
-| `BaroqueToday` (S M L) | `DayProvider` | the same | `baroque://brief`: the Daily Brief page |
+| `BaroqueToday` (S M L) | `DayProvider` | the same | a task's ring: `ToggleTaskIntent` ticks it; anywhere else: `baroque://brief`, the Daily Brief page |
 | `BaroqueQuote` | `QuoteProvider` | six entries ahead on wall-clock slots (every 60 min by default) | `NextQuoteIntent`: the next quote |
 | `BaroqueBattery` | `BatteryProvider` | every 15 min (reads `UIDevice` in the extension) | opens the app |
 | `BaroqueStillLife` | `StillLifeProvider` | never | opens the app |
@@ -112,12 +129,12 @@ The app compiles two files of its own on top of `Shared/`: `Theme.swift` and `La
 
 `ContentView` is a single form:
 - **The previews:** the real rococo views with the cached snapshots.
-- **Settings:** the repository, the token, the paths and the location.
+- **Settings:** the repository, the token, the paths and the location. There's no "Max tasks shown" setting any more: the small and medium Today show four tasks and the large up to seven that fit, then "+ N more".
 - **Home screen setup.**
 - **The icons.**
-- **Save & Refresh:** stores the settings, fetches, and reloads every timeline.
+- **Save & Refresh:** stores the settings, fetches, retries any unsaved ticks, and reloads every timeline.
 
-`BriefView` fetches `Daily Brief/Today.md` and sets it out block by block: the title, the summary, the sections, tasks with rings, bullets. It caches the note in `Store.brief`.
+`BriefView` fetches the Daily Brief and sets it out block by block: the title, the summary, the sections, tasks with rings, bullets. Each ring ticks its task ([Writing to the vault](#writing-to-the-vault)). It caches the note in `Store.brief`.
 
 ### Home screen setup
 
@@ -146,11 +163,11 @@ iOS lets no app move icons, set the wallpaper or place widgets, so the app hands
 
 ## Tests
 
-- **Parser tests:** `ParserTests/` tests the parsers, the agenda ordering and the daily note paths against real-shaped Markdown (`cd ParserTests && swift test`).
+- **Parser tests:** `ParserTests/` tests the parsers, the agenda ordering and the daily note paths against real-shaped Markdown, and ticking: the line change, the ticks that stay ticked, and the GitHub writes against a stubbed `URLProtocol` (`cd ParserTests && swift test`).
 - **UI tests:** `BaroqueUITests/` drives SpringBoard on the simulator to place each widget on the home screen and screenshot it, fresh, cached and with a bad token (`scripts/capture_screenshots.sh`).
 
 ## The design lab
 
 `MockLab/` has one executable per look. A look renders the six widget states and a board to `MockLab/out/<look>/` with fixed demo data, and the harness links the app's own models through symlinks.
-- **The painted looks** link `PaintKit/`, which compiles the app's `Theme` and `Landscape`, the retired views (the Old Master Cover look and the first painted-night set) and both image catalogs: the app's and `Archive.xcassets`.
+- **The painted looks** link `PaintKit/`, which compiles the app's `Theme` and `Landscape`, the retired views (the Old Master Cover look, and the first painted-night set with its skies and ridges in `RetiredGrounds.swift`) and both image catalogs: the app's and `Archive.xcassets`.
 - **`RSmalls`** links the shipped `Shared/Rococo*.swift`. It renders the small widget ideas, and with `README=1` it renders the README's pictures.

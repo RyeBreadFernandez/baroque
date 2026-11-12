@@ -7,8 +7,8 @@ Painted iPhone home screen widgets, fed by an Obsidian vault. SwiftUI and Widget
 ## Widgets
 
 - **Day:** sunrise, sunset and the weather. The large size shows a repainted photograph with a quote.
-- **Today:** today's tasks from the vault. Tap it to read the whole daily brief.
-- **Quote:** a quote from the vault. Tap it for the next one.
+- **Today:** today's tasks from the vault; tick one to mark it done there. Tap it to read the whole daily brief.
+- **Quote:** a quote from the vault, with who said it. Tap it for the next one.
 - **Battery, Still Life and Photograph:** the iPhone's charge, the flower painting, a photograph.
 
 When the phone is offline, the widgets keep showing the last data they fetched.
@@ -30,4 +30,4 @@ The wallpaper is Hubert Robert's *The Bathing Pool* (The Met, public domain), an
 
 ## License
 
-The code is under the [MIT License](LICENSE). The photographs are © the author and aren't covered by it.
+The code is under the [MIT License](LICENSE). The photographs and their repainted versions are © the author and aren't covered by it.
