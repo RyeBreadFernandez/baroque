@@ -31,9 +31,11 @@
 		64B6D9178F18DBF0772DF4B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A50D43107EEF9AAE61832DC /* Assets.xcassets */; };
 		747CC5731BA56E71C799EF45 /* GitHubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8C7F107F3A39B0572A6382 /* GitHubClient.swift */; };
 		753EA782FC46E6200F991710 /* BandImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9570E1728E4250CCAC681343 /* BandImage.swift */; };
+		75494099A8E141EA6EB99EF7 /* BriefHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61FF77248F5C753D60DBFA93 /* BriefHTML.swift */; };
 		78B34A961ED2DE085D8E639E /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB59A043CEBF2BE6177EF6FD /* Store.swift */; };
 		79E776D3856B3AE6A2E8D00A /* WeatherClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D1E098ADA6043F3754244F /* WeatherClient.swift */; };
 		82105EE67D238C0013145096 /* PaintTextures.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ACC5636EE48B331AEE0BEF84 /* PaintTextures.xcassets */; };
+		82315FFACA7FAD3C61452E9F /* BriefStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1C24515FC9F43335ED0FD65 /* BriefStyle.swift */; };
 		8CEBE79E6E15E502B8FA81F2 /* BaroqueWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A5BA03557D6204E0B162DB /* BaroqueWidgets.swift */; };
 		8F99A67A1E144B448C255DED /* Brief.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA1E22AC8165E2D9077DDFF /* Brief.swift */; };
 		934034CC1677658938D4E118 /* ToggleTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5DDE890DFA2C0C3D8372D0 /* ToggleTaskIntent.swift */; };
@@ -112,6 +114,7 @@
 		3F109913CDF29869B61568CA /* BaroqueUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BaroqueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49055F7A89F73FFE8DD65125 /* DebugLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLaunch.swift; sourceTree = "<group>"; };
 		5E10DB9A4E60F7F02EF02277 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		61FF77248F5C753D60DBFA93 /* BriefHTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefHTML.swift; sourceTree = "<group>"; };
 		645685896793B6F5C40D776B /* Landscape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Landscape.swift; sourceTree = "<group>"; };
 		6A8C7F107F3A39B0572A6382 /* GitHubClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubClient.swift; sourceTree = "<group>"; };
 		6FF761763EBE154928FD8D0E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -140,6 +143,7 @@
 		BF087F287E6C7B0AF999A45B /* Baroque.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Baroque.xcconfig; sourceTree = "<group>"; };
 		CA977FC190E83843C5965330 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		CCA1E22AC8165E2D9077DDFF /* Brief.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Brief.swift; sourceTree = "<group>"; };
+		D1C24515FC9F43335ED0FD65 /* BriefStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefStyle.swift; sourceTree = "<group>"; };
 		D61465B04056954658948D58 /* TaskSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSync.swift; sourceTree = "<group>"; };
 		E1A5BA03557D6204E0B162DB /* BaroqueWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaroqueWidgets.swift; sourceTree = "<group>"; };
 		E67C0FAE01AE820878E96DB6 /* BriefPicture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefPicture.swift; sourceTree = "<group>"; };
@@ -155,6 +159,8 @@
 				6FF761763EBE154928FD8D0E /* Assets.xcassets */,
 				A7F2EA55F4F97E4005496E58 /* Baroque.entitlements */,
 				12697D19DF414B669E440186 /* BaroqueApp.swift */,
+				61FF77248F5C753D60DBFA93 /* BriefHTML.swift */,
+				D1C24515FC9F43335ED0FD65 /* BriefStyle.swift */,
 				ECB9FD1C9E49B030C81FA54D /* BriefView.swift */,
 				189741D8D4372274D9C8800C /* ContentView.swift */,
 				49055F7A89F73FFE8DD65125 /* DebugLaunch.swift */,
@@ -390,7 +396,9 @@
 				32EC69E58DA164208EC1DC2B /* BandImage.swift in Sources */,
 				ABF4F1D582CAB2446F91C412 /* BaroqueApp.swift in Sources */,
 				B8C5E6D52EAF3D04201DAAE5 /* Brief.swift in Sources */,
+				75494099A8E141EA6EB99EF7 /* BriefHTML.swift in Sources */,
 				EAB2B7FB3E68CC7CB5128ECF /* BriefPicture.swift in Sources */,
+				82315FFACA7FAD3C61452E9F /* BriefStyle.swift in Sources */,
 				3803F770BA96808DD4A85DB1 /* BriefView.swift in Sources */,
 				962C953E34C795793F78C772 /* ContentView.swift in Sources */,
 				C580B2C41A4F5899FDA31E5B /* DataLoader.swift in Sources */,
