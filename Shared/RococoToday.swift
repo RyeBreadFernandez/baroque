@@ -262,9 +262,10 @@ struct RococoTodayLarge: View {
 }
 
 /// The large Today's band with the Daily Brief's picture of the day (cut to it by BandImage): glazed at night as the
-/// bundled pictures are (RococoPicture), and darkened toward its foot by the theme's darkening behind words. A painting
-/// may be much lighter than the still life, near white even, so "Today" and the date each sit on a soft ground of
-/// their own as well (RococoWordsGround), by night too, since the glaze alone doesn't darken a pale painting enough.
+/// bundled pictures are (RococoPicture), and darkened smoothly toward its foot, across the whole band as the still
+/// life's is. A painting may be much lighter than the still life, near white even, so the foot is dark enough for
+/// "Today" and the date to hold 4.5:1 on a white picture, by day and by night (a ground behind each line showed as a
+/// grey box on a pale painting).
 struct RococoBriefBand: View {
     var image: CGImage
     var label: String
@@ -273,20 +274,22 @@ struct RococoBriefBand: View {
     /// The debug renders leave the words out, to measure what they sit on.
     @Environment(\.rococoBandWordsHidden) private var wordsHidden
 
-    /// How dark the band's foot is (times the theme's `scrim`).
-    static let foot = 0.45
-    /// How strongly the ground behind each line darkens (times the theme's `scrim`): the least that holds both lines
-    /// at 4.5:1 on a white picture by day, the lightest case (measured on the -renderWidgets stand-ins).
-    static let ground = 0.46
+    /// The foot's darkening, top to bottom: clear over the upper picture, then umber from where the words begin. Fixed
+    /// rather than scaled by the theme, so a white picture still holds the words at 4.5:1 (measured on the
+    /// -renderWidgets stand-ins with scripts/check_band_contrast.py).
+    static let foot: [Gradient.Stop] = [
+        .init(color: .clear, location: 0),
+        .init(color: RococoInk.umber.opacity(0.1), location: 0.25),
+        .init(color: RococoInk.umber.opacity(0.67), location: 0.46),
+        .init(color: RococoInk.umber.opacity(0.75), location: 1),
+    ]
 
     var body: some View {
-        let k = RococoTheme.current.scrim
         let picture = label.isEmpty ? Image(decorative: image, scale: 2) : Image(image, scale: 2, label: Text(label))
         RococoPicture(image: picture, night: night)
             .frame(width: 328, height: 82)
             .overlay(RococoScrim {
-                LinearGradient(colors: [RococoInk.umber.opacity(min(0.9, Self.foot * k)), RococoInk.umber.opacity(min(0.6, Self.foot * 0.3 * k)), .clear],
-                               startPoint: .bottom, endPoint: .top)
+                LinearGradient(stops: Self.foot, startPoint: .top, endPoint: .bottom)
             })
             .overlay(alignment: .bottomLeading) {
                 HStack(alignment: .firstTextBaseline) {
@@ -299,7 +302,7 @@ struct RococoBriefBand: View {
             }
     }
 
-    /// Cream with the band's shadow, on a ground of its own (`night: false` keeps it by night).
+    /// Cream with the band's shadow.
     private struct Words: ViewModifier {
         var hidden: Bool
 
@@ -308,7 +311,6 @@ struct RococoBriefBand: View {
                 .foregroundStyle(RococoInk.cream)
                 .shadow(color: RococoInk.shadow.opacity(0.7), radius: 2, x: 0, y: 1)
                 .opacity(hidden ? 0 : 1)
-                .modifier(RococoWordsGround(strength: RococoBriefBand.ground, night: false))
         }
     }
 }
