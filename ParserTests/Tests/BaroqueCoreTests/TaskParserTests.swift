@@ -71,6 +71,12 @@ final class TaskParserTests: XCTestCase {
         }
     }
 
+    func testRepeatingTasksAreMarked() {
+        XCTAssertEqual(one("- [ ] Water plants 🔁 every 2 weeks 📅 2026-06-05")?.repeats, true)
+        XCTAssertEqual(one("- [ ] Water plants 🔁\u{FE0F} every day")?.repeats, true)
+        XCTAssertEqual(one("- [ ] Water plants 📅 2026-06-05")?.repeats, false)
+    }
+
     func testAlternateDueDateEmoji() {
         XCTAssertEqual(one("- [ ] Dentist 📆 2026-06-05")?.due, day(2026, 6, 5))
         XCTAssertEqual(one("- [ ] Dentist 🗓️ 2026-06-05")?.due, day(2026, 6, 5))

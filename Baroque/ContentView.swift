@@ -54,14 +54,21 @@ struct ContentView: View {
             }
             .onAppear { showCoordinates(settings) }
             .task { await refresh() }
-            // Ticks that couldn't be saved (offline, or tapped on the widget) are tried again whenever the app opens.
+            // Ticks that couldn't be saved (offline, or tapped on the widget) are tried again whenever the app opens;
+            // then the previews show the agenda as the ticks left it.
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { Task { await TaskSync.retryPending() } }
+                if phase == .active {
+                    Task {
+                        await TaskSync.retryPending()
+                        daySnapshot = Store.shared.daySnapshot
+                    }
+                }
             }
             .onOpenURL { url in
                 if url.scheme == Brief.url.scheme, url.host == Brief.url.host { showBrief = true }
             }
-            .sheet(isPresented: $showBrief) { BriefView() }
+            // A task ticked on the Brief page leaves the previews when the page closes.
+            .sheet(isPresented: $showBrief, onDismiss: { daySnapshot = Store.shared.daySnapshot }) { BriefView() }
             #if DEBUG
             .onAppear { if ProcessInfo.processInfo.arguments.contains("-openBrief") { showBrief = true } }
             #endif

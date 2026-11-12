@@ -7,7 +7,7 @@ Baroque is three things that ship together, plus two that don't:
 | The app | Settings, the token, live widget previews, the Daily Brief page, home screen setup | `Baroque/` |
 | The widget extension | Six widgets and their timelines | `BaroqueWidget/` |
 | Shared code | Only what both need: models, parsers, the GitHub and weather clients, the loader and cache, the rococo views | `Shared/`, compiled into both |
-| Parser tests | A Swift package that tests the real `Shared/` parsers through symlinks | `ParserTests/` |
+| Parser tests | A Swift package that tests the real `Shared/` parsers (and the app's `SettingsInput`) through symlinks | `ParserTests/` |
 | The design lab | A macOS Swift package that renders widget looks as images | `MockLab/` |
 
 `project.yml` is the source of truth for the Xcode project (XcodeGen). No third-party packages are used anywhere.
@@ -51,7 +51,7 @@ The vault is an Obsidian folder that the Obsidian Git plugin pushes to a private
   - bullets (`- "text" — Author`);
   - lines that open with a quotation mark (`“text” - Author`).
 
-  An author line (`- Author`) directly under a quote that has none becomes its author. Headings and other prose are ignored, so the quotes file can be organised freely. The widgets show the author under the quote (the Quote widget at every size, and the large Day); a quote with no author in the file shows none, as nothing is guessed.
+  An author line directly under a quote in quotation marks that has none becomes its author. Under a bullet quote that's an indented sub-bullet or a line starting with an em or en dash (`— Author`); a plain bullet there is the next quote in the list. Under a quote on a line of its own, a plain `- Author` counts too, if it reads like a name (80 characters at most, not ending in `.`, `!` or `?`). Headings and other prose are ignored, so the quotes file can be organised freely. The widgets show the author under the quote (the Quote widget at every size, and the large Day); a quote with no author in the file shows none, as nothing is guessed.
 
 The task paths are a setting: one vault path per line, where `{daily}` expands to today's daily note (`daily note/MM.dd.yyyy - EEEE.md` by default). The default is the Daily Brief.
 
@@ -59,11 +59,12 @@ The task paths are a setting: one vault path per line, where `{daily}` expands t
 
 Tasks can be ticked off in two places: on the Daily Brief page, where each task's ring is a button (tap again to untick), and on the Today widget at every size, where the ring is an App Intent button (`ToggleTaskIntent`) and the rest of the widget still opens the page. Both go through `TaskSync`.
 
-- **What's written.** The tick goes to the file and line the task came from (for the brief's tasks, `Daily Brief/Today.md`), in the Obsidian Tasks convention: `- [ ]` becomes `- [x]` and ` ✅ YYYY-MM-DD` is added, before a trailing `^block-id` if there is one. Unticking reverses both. The indentation and the rest of the line stay as they were. `TaskToggle.apply` finds the line by its exact text, preferring the line number it was read from. If the line is gone or appears twice, nothing is written and the page says the task changed in the vault.
+- **What's written.** The tick goes to the file and line the task came from (for the brief's tasks, `Daily Brief/Today.md`), in the Obsidian Tasks convention: `- [ ]` becomes `- [x]` and ` ✅ YYYY-MM-DD` is added, before a trailing `^block-id` if there is one. Unticking reverses both. The indentation and the rest of the line stay as they were. `TaskToggle.apply` finds the line by its exact text, preferring the line number it was read from. A widget tap doesn't know the exact line, so it finds the task by its words, and when two lines share them (two "Call the dentist" on different days), by its 📅 date before its line number, which may have moved. If the line is gone, or two lines still can't be told apart, nothing is written and the page says the task changed in the vault. A tap ticks that one task only: the other one worded alike stays on the widget.
+- **Repeating tasks.** A task with 🔁 is never ticked by the app: ticking it here would end the recurrence, while Obsidian's Tasks plugin makes the next one when it's ticked there. The parser marks it (`TaskItem.repeats`); the widget's ring for it is no button, the Brief page shows its ring with "Repeats: tick it in Obsidian", and a tap on it (from a widget timeline drawn before) is refused with "This task repeats: tick it in Obsidian, so the next one is made." and the task stays. If only the file shows it repeating, the write finds that out and writes nothing.
 - **How.** `GitHubClient.fetchFile` reads the file and its `sha` through the Contents API, and `updateFile` sends the new text back with that `sha` as a commit, `Baroque: done "<the task's first 50 characters>"` (or `undone`). If the file changed in between (409 or 422), it fetches, ticks and tries once more. A 403 or 404 on the write means the token can only read; the app says so and doesn't retry.
-- **At once, then saved.** The ring fills and the task is struck out straight away, with "Saving…" under it until the write is done. The tick is remembered and the task leaves the cached agenda first, so the Today widgets redraw without it even offline. A write that fails waits in `Store.pendingToggles` ("Not saved yet: will retry") and is tried again when the app comes to the front, on Save & Refresh, and when a widget loads the day. Taps on the same task merge: a tick and then an untick cancel out.
-- **Ticks stay ticked.** The morning brief rewrites `Today.md` every day and may list a ticked task again, unticked. `Store.doneTasks` remembers each tick (the newest 500): its file, the day, and a key made from the task's text without the checkbox, the ✅ date, the priority and due markers and extra spaces. An open task whose key is remembered for the same file counts as done: the widgets leave it out, the Brief page shows it ticked, and a tick is queued so the file is ticked again. Unticking a task forgets it.
-- **The known limit.** A new task worded exactly like a ticked one shows as ticked. Untick it once and it stays open. The brief's source notes usually make the wording unique.
+- **At once, then saved.** The ring fills and the task is struck out straight away, with "Saving…" under it until the write is done. The task leaves the cached agenda first, so the Today widgets redraw without it even offline. A write that fails waits in `Store.pendingToggles` ("Not saved yet: will retry") and is tried again when the app comes to the front, on Save & Refresh, and when a widget loads the day: there the waiting ticks are written before the tasks are read (for 3 seconds at most), so the list read is the file as they left it. Taps on the same task merge: a tick and then an untick cancel out. Saved ticks decode one by one, so an entry that can't be read is dropped rather than all of them.
+- **Ticks stay ticked, in the Daily Brief.** The morning brief rewrites `Today.md` every day and may list a ticked task again, unticked. `Store.doneTasks` remembers each tick made there (the newest 500): the day, and a key made from the task's text without the checkbox, the ✅ date, the priority and due markers and extra spaces. An open task in the brief whose key is remembered counts as done: the widgets leave it out, the Brief page shows it ticked, and a tick is queued so the file is ticked again. Unticking a task forgets it. Ticks in any other file aren't remembered (`TaskSync.remembers`): they're written to the file and stay ticked there on their own, so next month's "Pay rent" isn't ticked because this month's was.
+- **The known limit.** In the Daily Brief, a new task worded exactly like a ticked one shows as ticked. Untick it once and it stays open. The brief's source notes usually make the wording unique.
 - **Reaching Obsidian.** The commit lands in the vault's GitHub repository, and Obsidian has it the next time Obsidian Git pulls (on a schedule, and on startup). Editing the same line on the Mac before that pull can cause a merge conflict there.
 
 Ticking needs a fine-grained token with **Contents: Read and write** on the vault's repository ([SETUP.md](SETUP.md#ticking-tasks-off)). Tests use a stubbed `URLProtocol`, never a real repository.
@@ -88,7 +89,7 @@ It fetches once and serves every widget. Day and Today share a provider, and iOS
 | `baroque.quoteOffset` | how far the next-quote button has moved the rotation |
 | `baroque.brief` | the last Daily Brief fetched in full |
 | `baroque.pendingToggles` | ticks and unticks not yet written to the vault |
-| `baroque.doneTasks` | the ticks remembered so a task the brief lists again stays ticked |
+| `baroque.doneTasks` | the Daily Brief's ticks, remembered so a task the brief lists again stays ticked |
 
 They live in the App Group's `UserDefaults` (`group.com.ryanfernandez.terra`). Settings decode field by field, so a field added in a later version takes its default instead of resetting what was entered, and a field no longer used, like the old "Max tasks shown" (`maxTasks`), still decodes.
 
@@ -163,7 +164,7 @@ iOS lets no app move icons, set the wallpaper or place widgets, so the app hands
 
 ## Tests
 
-- **Parser tests:** `ParserTests/` tests the parsers, the agenda ordering and the daily note paths against real-shaped Markdown, and ticking: the line change, the ticks that stay ticked, and the GitHub writes against a stubbed `URLProtocol` (`cd ParserTests && swift test`).
+- **Parser tests:** `ParserTests/` tests the parsers, the agenda ordering and the daily note paths against real-shaped Markdown, and ticking: the line change, tasks worded alike, repeating tasks, the ticks that stay ticked in the Daily Brief, and the GitHub writes against a stubbed `URLProtocol` (`cd ParserTests && swift test`).
 - **UI tests:** `BaroqueUITests/` drives SpringBoard on the simulator to place each widget on the home screen and screenshot it, fresh, cached and with a bad token (`scripts/capture_screenshots.sh`).
 
 ## The design lab

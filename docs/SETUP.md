@@ -87,7 +87,8 @@ Tap a task's ring on the Today widget or on the Daily Brief page to tick it; on 
 
 - **The token needs Read and write.** With a read-only token the task stays ticked in Baroque, with a note that the token can only read. Make a token as in section 1, step 3, with **Contents** set to **Read and write**, paste it in the app and tap **Save & Refresh**. The waiting ticks are written then.
 - **Offline.** A tick made offline says "Not saved yet: will retry", and is written the next time the app opens, on Save & Refresh, or when a widget refreshes.
-- **Ticks stay ticked.** If your morning brief rewrites `Today.md` and lists a ticked task again, Baroque keeps it ticked and ticks it in the note again. A new task worded exactly like one you ticked shows as ticked too; untick it once and it stays open.
+- **Ticks stay ticked in the Daily Brief.** If your morning brief rewrites `Today.md` and lists a ticked task again, Baroque keeps it ticked and ticks it in the note again. A new task in the brief worded exactly like one you ticked shows as ticked too; untick it once and it stays open. In any other note a tick is simply written there, so next month's "Pay rent" stays open.
+- **Repeating tasks (🔁) are ticked in Obsidian.** Baroque doesn't tick them, because the Tasks plugin makes the next one only when a task is ticked in Obsidian. Their ring isn't a button, and the Brief page says "Repeats: tick it in Obsidian".
 - **In Obsidian.** The tick arrives the next time Obsidian Git pulls. If you edit the same line on your Mac before then, Obsidian Git may report a merge conflict.
 - **"This task changed in the vault."** The line was edited or moved since Baroque read it. Pull down to refresh, then tick it again.
 

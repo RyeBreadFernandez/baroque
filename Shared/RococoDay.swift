@@ -169,7 +169,8 @@ struct RococoSunArcMedium: View {
 struct RococoHero: View {
     var snap: DaySnapshot
     var quote: Quote?
-    @Environment(\.widgetRenderingMode) private var mode
+    /// Set by RococoFrame (RococoDayView draws this inside one).
+    @Environment(\.rococoAccented) private var accented
 
     var body: some View {
         let size = BaroqueSize.large.designSize
@@ -179,7 +180,7 @@ struct RococoHero: View {
             RococoPicture(name: RococoPhotos.large(at: snap.date), night: night)
             RococoCorners()
             // On tinted and clear home screens iOS would draw these shades in the words' own tint.
-            if mode != .accented {
+            if !accented {
                 let k = RococoTheme.current.scrim
                 LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(min(0.9, 0.55 * k)), Color(hex: 0x3A2C1F).opacity(min(0.6, 0.22 * k)), .clear],
                                startPoint: .leading, endPoint: UnitPoint(x: 0.7, y: 0.5))

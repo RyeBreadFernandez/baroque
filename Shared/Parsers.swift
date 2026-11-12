@@ -17,7 +17,8 @@ enum TaskParser {
             let meta = extractMetadata(body)
             let text = cleanInline(meta.text)
             guard !text.isEmpty else { continue }
-            items.append(TaskItem(text: text, due: meta.due, priority: meta.priority, sourcePath: sourcePath, lineNumber: line.number))
+            items.append(TaskItem(text: text, due: meta.due, priority: meta.priority, sourcePath: sourcePath, lineNumber: line.number,
+                                  repeats: meta.repeats))
         }
         return items
     }
@@ -55,15 +56,18 @@ enum TaskParser {
         + "|🏁\\x{FE0F}?[ \\t]*[a-zA-Z]*"                                      // on completion
     )
 
-    private static func extractMetadata(_ body: String) -> (text: String, due: Date?, priority: TaskPriority) {
+    private static func extractMetadata(_ body: String) -> (text: String, due: Date?, priority: TaskPriority, repeats: Bool) {
         var due: Date?
         var priority: TaskPriority?
+        var repeats = false
         let ns = body as NSString
         var text = ""
         var cursor = 0
         for m in metadataRegex.matches(in: body, range: NSRange(location: 0, length: ns.length)) {
             text += ns.substring(with: NSRange(location: cursor, length: m.range.location - cursor)) + " "
             cursor = m.range.location + m.range.length
+            // By scalar, since 🔁 with a variation selector is another Character.
+            if ns.substring(with: m.range).unicodeScalars.first == "\u{1F501}" { repeats = true }
             if m.range(at: 1).location != NSNotFound,
                dueMarkers.contains(ns.substring(with: m.range(at: 1))),
                m.range(at: 2).location != NSNotFound,
@@ -75,7 +79,7 @@ enum TaskParser {
             }
         }
         text += ns.substring(from: cursor)
-        return (text, due, priority ?? TaskPriority.none)
+        return (text, due, priority ?? TaskPriority.none, repeats)
     }
 
     /// `yyyy-MM-dd` as the start of that day in the local time zone. Rejects impossible dates
@@ -224,7 +228,8 @@ enum QuoteParser {
         var calloutTitle: String?
         var skippingCallout = false           // inside a non-quote callout such as [!note]
         var inBlock: Bool { !paragraphs.isEmpty }
-        var lastAuthorless: Int?              // the quote on the line just above, in quotation marks and with no author
+        // The quote on the line just above, in quotation marks and with no author, and whether it was a bullet.
+        var lastAuthorless: (index: Int, bullet: Bool)?
 
         func flush(authorBelow: String? = nil) {
             defer { paragraphs = []; calloutTitle = nil }
@@ -296,12 +301,11 @@ enum QuoteParser {
             }
             flush()
 
-            // So does one directly below a quote in quotation marks that has no author yet: `“Text”` then `- Author`,
-            // or the author as a sub-bullet (`  * Author`).
-            let subBullet = line.text.first?.isWhitespace == true ? bulletBody(trimmed) : nil
-            if let i = authorless, let a = authorFromLine(trimmed) ?? subBullet, a.count <= 80, !isBulletQuote(trimmed), !isTask(trimmed) {
+            // So does one directly below a quote in quotation marks that has no author yet (`authorBelow`).
+            if let above = authorless, !isBulletQuote(trimmed), !isTask(trimmed),
+               let a = authorBelow(line.text, underBullet: above.bullet) {
                 let cleaned = TaskParser.cleanInline(a)
-                if !cleaned.isEmpty { quotes[i].author = cleaned }
+                if !cleaned.isEmpty { quotes[above.index].author = cleaned }
                 continue
             }
 
@@ -311,14 +315,14 @@ enum QuoteParser {
                 let before = quotes.count
                 append(text: TaskParser.cleanInline(text), author: author)
                 if author == nil, quotes.count > before, let first = item.first, openingQuoteChars.contains(first) {
-                    lastAuthorless = before
+                    lastAuthorless = (before, true)
                 }
                 continue
             }
             if let line = standaloneQuote(trimmed) {
                 let before = quotes.count
                 append(text: TaskParser.cleanInline(line.text), author: line.author)
-                if line.author == nil, quotes.count > before { lastAuthorless = before }
+                if line.author == nil, quotes.count > before { lastAuthorless = (before, false) }
                 continue
             }
             // Headings and prose are ignored.
@@ -348,6 +352,34 @@ enum QuoteParser {
         guard let m = authorRegex.firstMatch(in: t, range: NSRange(location: 0, length: ns.length)) else { return nil }
         let a = ns.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespaces)
         return a.isEmpty ? nil : a
+    }
+
+    /// The author on the line under a quote in quotation marks that has none (`raw` is the line as written, with its
+    /// indent). Under a bullet quote that's a line opening with an em or en dash (`— Author`) or an indented
+    /// sub-bullet (`  - Author`); a plain bullet there is the next quote in the list. Under a quote on a line of its
+    /// own (`“Text”`, the user's style) a plain `- Author` counts too, when it reads like a name rather than a
+    /// sentence (`looksLikeName`).
+    private static func authorBelow(_ raw: String, underBullet: Bool) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        let author: String?
+        if let first = trimmed.first, "—–―".contains(first) {
+            author = authorFromLine(trimmed)
+        } else if raw.first?.isWhitespace == true, let sub = bulletBody(trimmed) {
+            author = underBullet || looksLikeName(sub) ? sub : nil
+        } else if !underBullet, let a = authorFromLine(trimmed), looksLikeName(a) {
+            author = a
+        } else {
+            author = nil
+        }
+        guard let author, author.count <= 80 else { return nil }
+        return author
+    }
+
+    /// Short, and not a sentence: at most 80 characters, not ending in a full stop, question or exclamation mark.
+    private static func looksLikeName(_ s: String) -> Bool {
+        let t = s.trimmingCharacters(in: .whitespaces)
+        guard let last = t.last else { return false }
+        return t.count <= 80 && !".!?".contains(last)
     }
 
     private static let bulletRegex = MarkdownText.regex(#"^(?:[-*+]|\d{1,9}[.)])\s+(.*)$"#)

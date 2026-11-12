@@ -47,6 +47,21 @@ final class TaskToggleTests: XCTestCase {
         XCTAssertEqual(untick("- [ ] Open"), "- [ ] Open")
     }
 
+    func testARepeatingLineIsNeverChanged() {
+        let line = "- [ ] #todo Water the ferns 🔁 every week 📅 2026-11-11"
+        XCTAssertTrue(TaskToggle.repeats(line))
+        XCTAssertFalse(TaskToggle.repeats("- [ ] #todo Water the ferns 📅 2026-11-11"))
+        XCTAssertNil(tick(line))
+        XCTAssertNil(untick("- [x] Water the ferns 🔁 every week 📅 2026-11-04 ✅ 2026-11-04"))
+        let md = "# Today\n\(line)\n"
+        XCTAssertNil(TaskToggle.apply(to: md, line: line, near: 2, done: true, today: today))
+        XCTAssertNil(TaskToggle.apply(to: md, key: "Water the ferns", near: 2, done: true, today: today, due: TaskParser.parseDate("2026-11-11")))
+        let change = TaskToggle.change(in: md, key: "Water the ferns", near: 2, done: true, today: today, due: TaskParser.parseDate("2026-11-11"))
+        XCTAssertEqual(change?.repeats, true)
+        XCTAssertEqual(change?.markdown, md, "the file as it was")
+        XCTAssertEqual(change?.line, line)
+    }
+
     func testNotATaskOrOtherStatusIsNil() {
         XCTAssertNil(tick("Just a paragraph"))
         XCTAssertNil(tick("- A bullet"))
@@ -134,6 +149,21 @@ final class TaskToggleTests: XCTestCase {
         let md = "- [x] Water the ferns ✅ 2026-11-10\n- [ ] Call the bike shop"
         XCTAssertEqual(TaskToggle.apply(to: md, key: "Water the ferns", near: 1, done: true, today: today), md)
         XCTAssertNil(TaskToggle.apply(to: md, key: "Feed the cat", near: 1, done: true, today: today))
+    }
+
+    func testByKeyTellsTasksWordedAlikeApartByTheirDueDate() {
+        let md = "- [ ] Call the dentist 📅 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20"
+        let twentieth = TaskToggle.change(in: md, key: "Call the dentist", near: 1, done: true, today: today, due: TaskParser.parseDate("2026-11-20"))
+        XCTAssertEqual(twentieth?.lineNumber, 2, "the due date wins over a line number that moved")
+        // The eleventh is already ticked: done, and the twentieth isn't touched.
+        let ticked = "- [x] Call the dentist 📅 2026-11-11 ✅ 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20"
+        XCTAssertEqual(TaskToggle.apply(to: ticked, key: "Call the dentist", near: 1, done: true, today: today, due: TaskParser.parseDate("2026-11-11")), ticked)
+        // No line due that day, or no due date given: which one is meant isn't known.
+        XCTAssertNil(TaskToggle.apply(to: md, key: "Call the dentist", near: 5, done: true, today: today, due: TaskParser.parseDate("2026-11-15")))
+        XCTAssertNil(TaskToggle.apply(to: md, key: "Call the dentist", near: 5, done: true, today: today))
+        // One line with the words: it's the task, whatever its date now.
+        XCTAssertNotNil(TaskToggle.apply(to: "- [ ] Call the dentist 📅 2026-11-12", key: "Call the dentist", near: 1, done: true, today: today,
+                                         due: TaskParser.parseDate("2026-11-11")))
     }
 
     func testByKeyPrefersTheCopyThatStillNeedsIt() {

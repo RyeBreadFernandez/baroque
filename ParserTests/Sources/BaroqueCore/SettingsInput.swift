@@ -1,1 +1,1 @@
-../../../Shared/SettingsInput.swift
+../../../Baroque/SettingsInput.swift

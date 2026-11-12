@@ -69,6 +69,18 @@ final class LoaderTests: XCTestCase {
         XCTAssertTrue(DataLoader.shouldStore(existing: noon.addingTimeInterval(60), startedAt: noon, forced: true))
     }
 
+    func testANewerSnapshotFromTheSameSecondIsLeftInPlace() throws {
+        // The widget began at 12:00:00.3; the app stored its snapshot at 12:00:00.7, which reads back as 12:00:00.
+        let encoder = JSONEncoder(), decoder = JSONDecoder()
+        encoder.dateEncodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .iso8601
+        let stored = try decoder.decode([Date].self, from: encoder.encode([noon.addingTimeInterval(0.7)]))[0]
+        XCTAssertEqual(stored, noon, "whole seconds")
+        XCTAssertFalse(DataLoader.shouldStore(existing: stored, startedAt: noon.addingTimeInterval(0.3)))
+        // From the second before: older, so the fetch stores.
+        XCTAssertTrue(DataLoader.shouldStore(existing: noon.addingTimeInterval(-1), startedAt: noon.addingTimeInterval(0.3)))
+    }
+
     // MARK: Quotes (F18)
 
     let quotesPath = "main/Quotes/Quotes.md"
@@ -323,6 +335,51 @@ final class LoaderTests: XCTestCase {
         await DataLoader.wait(for: long, until: start.addingTimeInterval(0.1))
         XCTAssertLessThan(Date().timeIntervalSince(start), 1.5)
         long.cancel()
+    }
+
+    private actor Log {
+        var events: [String] = []
+        func add(_ event: String) { events.append(event) }
+    }
+
+    func testPendingTicksAreWrittenBeforeTheTasksAreRead() async {
+        let log = Log()
+        let start = Date()
+        let tasks = await DataLoader.afterPendingTicks(true, retry: {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            await log.add("retry")
+        }, until: start.addingTimeInterval(3)) { () async -> [String] in
+            await log.add("fetch")
+            return ["Water the ferns"]
+        }
+        XCTAssertEqual(tasks, ["Water the ferns"])
+        let events = await log.events
+        XCTAssertEqual(events, ["retry", "fetch"])
+    }
+
+    func testNothingPendingFetchesAtOnce() async {
+        let log = Log()
+        let start = Date()
+        await DataLoader.afterPendingTicks(false, retry: { await log.add("retry") }, until: start.addingTimeInterval(3)) {
+            await log.add("fetch")
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(start), 0.5)
+        let events = await log.events
+        XCTAssertEqual(events, ["fetch"], "no retry when nothing waits")
+    }
+
+    func testASlowRetryHoldsTheFetchOnlyUntilTheAllowance() async {
+        let log = Log()
+        let start = Date()
+        let slow = Task { try? await Task.sleep(nanoseconds: 3_000_000_000) }
+        await DataLoader.afterPendingTicks(true, retry: { await slow.value; await log.add("retry") },
+                                           until: start.addingTimeInterval(0.2)) {
+            await log.add("fetch")
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(start), 1.5)
+        let events = await log.events
+        XCTAssertEqual(events, ["fetch"], "the retry runs on")
+        slow.cancel()
     }
 
     func testWaitReturnsWhenTheTaskEnds() async {
