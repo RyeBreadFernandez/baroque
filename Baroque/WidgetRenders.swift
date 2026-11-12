@@ -103,6 +103,8 @@ enum WidgetRenders {
         }
         writeAccented(dir: dir)
         writeTickAreas(dir: dir)
+        report.append("The Daily Brief's picture of the day, stand-ins cut by BandImage (today-large-picture-*):")
+        report += writeBriefPictures(dir: dir)
         try? report.joined(separator: "\n").write(to: dir.appendingPathComponent("fit.txt"), atomically: true, encoding: .utf8)
         try? "done".write(to: dir.appendingPathComponent("done.txt"), atomically: true, encoding: .utf8)
     }
@@ -133,6 +135,9 @@ enum WidgetRenders {
             if family.size == .small {
                 views.append(("battery", AnyView(RococoBatteryView(reading: BatteryReading(level: 0.82, charging: false, at: morning)))))
             }
+            if family.size == .large, let picture = briefPictureStandIns(dir: dir).first?.picture {
+                views.append(("today-picture", AnyView(RococoTodayView(snapshot: demo, size: .large, picture: picture))))
+            }
             for (kind, view) in views {
                 write(view.environment(\.rococoAccented, true), size: size,
                       name: "\(device.name)-accented-\(kind)-\(family.name)", dir: dir, ground: ground)
@@ -152,6 +157,76 @@ enum WidgetRenders {
             write(RococoTodayView(snapshot: DemoData.day(now: morning), size: family.size, tick: shade), size: device.size(family.size),
                   name: "\(device.name)-ticks-today-\(family.name)", dir: dir)
         }
+    }
+
+    /// The large Today with stand-ins for the Daily Brief's picture of the day, by day and by night, at every size
+    /// ("today-large-picture-<picture>-<day|night>"). The stand-ins are made here and cut by BandImage as a downloaded
+    /// picture is. At the iPhone 17 size each has a "-ground" twin without the band's words, which
+    /// scripts/check_band_contrast.py reads to measure the words against what they sit on. Returns fit.txt's lines.
+    @MainActor
+    private static func writeBriefPictures(dir: URL) -> [String] {
+        let brief = dayStates.first { $0.name == "brief" }?.snapshot ?? DemoData.day()
+        let tonight = Calendar.current.date(bySettingHour: 22, minute: 0, second: 0, of: Date()) ?? Date()
+        var notes: [String] = []
+        for standIn in briefPictureStandIns(dir: dir) {
+            let size = (try? standIn.picture.file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            let image = standIn.picture.image()
+            notes.append("  \(standIn.name): \(image?.width ?? 0) x \(image?.height ?? 0) px, \(size) bytes")
+            for (time, date) in [("day", morning), ("night", tonight)] {
+                var snap = brief
+                snap.date = date
+                for device in devices {
+                    write(RococoTodayView(snapshot: snap, size: .large, picture: standIn.picture), size: device.size(.large),
+                          name: "\(device.name)-today-large-picture-\(standIn.name)-\(time)", dir: dir)
+                }
+                write(RococoTodayView(snapshot: snap, size: .large, picture: standIn.picture).environment(\.rococoBandWordsHidden, true),
+                      size: devices[0].large, name: "\(devices[0].name)-today-large-picture-\(standIn.name)-\(time)-ground", dir: dir)
+            }
+        }
+        return notes
+    }
+
+    /// The stand-ins, cut to the band into renders/brief-pictures: "light", a pale painting that's white where the words
+    /// sit (the hardest case for them); "photo", one of the repainted photographs; "dark", a nocturne.
+    @MainActor
+    private static func briefPictureStandIns(dir: URL) -> [(name: String, picture: RococoBandPicture)] {
+        let folder = dir.appendingPathComponent("brief-pictures", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let sources: [(String, Data?)] = [
+            ("light", painting(top: 0xF1EADB, foot: 0xFFFFFF, shapes: 0xE6DCC8)),
+            ("photo", UIImage(named: "RococoPhoto-kings-canyon")?.jpegData(compressionQuality: 0.95)),
+            ("dark", painting(top: 0x15141A, foot: 0x3A2D22, shapes: 0xD9CFB8))
+        ]
+        return sources.compactMap { name, data in
+            let file = folder.appendingPathComponent(name + ".jpg")
+            guard let data, let jpeg = BandImage.jpeg(from: data), (try? jpeg.write(to: file)) != nil else { return nil }
+            return (name, RococoBandPicture(file: file, label: "A stand-in for the picture of the day (\(name))"))
+        }
+    }
+
+    /// A made-up painting at the size the brief's come in (1800 x 1200): a sky from `top` to `foot`, a few soft shapes
+    /// and a low horizon, as JPEG data.
+    private static func painting(top: UInt32, foot: UInt32, shapes: UInt32) -> Data? {
+        func ui(_ hex: UInt32, _ alpha: CGFloat = 1) -> UIColor {
+            UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
+        }
+        let size = CGSize(width: 1800, height: 1200)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { context in
+            let cg = context.cgContext
+            let colours = [ui(top).cgColor, ui(foot).cgColor, ui(foot).cgColor] as CFArray
+            if let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: colours, locations: [0, 0.45, 1]) {
+                cg.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
+            }
+            ui(shapes, 0.45).setFill()
+            for (x, y, w, h) in [(180.0, 420.0, 520.0, 120.0), (900, 470, 620, 110), (1350, 380, 300, 200)] {
+                cg.fillEllipse(in: CGRect(x: x, y: y, width: w, height: h))
+            }
+            ui(shapes, 0.25).setFill()
+            cg.fill(CGRect(x: 0, y: 640, width: size.width, height: 14))
+        }
+        return image.jpegData(compressionQuality: 0.92)
     }
 
     /// The widget at its exact size and rounded shape, as the home screen shows it.
