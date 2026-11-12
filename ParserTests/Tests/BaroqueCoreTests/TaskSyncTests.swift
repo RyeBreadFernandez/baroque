@@ -322,6 +322,71 @@ final class TaskSyncTests: XCTestCase {
         XCTAssertEqual(store.pendingToggles.first?.due, TaskParser.parseDate("2026-11-12"))
     }
 
+    // MARK: Repeating tasks
+
+    private let repeatingBrief = "# November 11\n\n## Needs attention\n- [ ] #todo Water the ferns 🔁 every day\n"
+
+    func testATapOnARepeatingTaskIsRefusedAndTheTaskStays() async {
+        let tasks = TaskParser.parse(markdown: repeatingBrief, sourcePath: path)
+        XCTAssertEqual(tasks.map(\.repeats), [true])
+        store.daySnapshot = DaySnapshot(date: Date(), weather: nil, tasks: tasks, taskError: nil, weatherError: nil)
+
+        // From an older widget timeline that still had a button on it.
+        let outcome = await TaskSync.toggle(PendingToggle(tasks[0], tappedAt: nine), store: store, client: StubGitHub.client())
+        XCTAssertEqual(outcome, .failed(TaskSync.repeatsMessage))
+        XCTAssertTrue(StubGitHub.seen.isEmpty, "nothing read or written")
+        XCTAssertEqual(snapshotTexts, ["Water the ferns"], "still on the widget")
+        XCTAssertTrue(store.pendingToggles.isEmpty)
+        XCTAssertTrue(store.doneTasks.isEmpty)
+
+        // A tap that carries the line (the Brief page's) is refused the same way.
+        let fromPage = PendingToggle(path: path, line: "- [ ] #todo Water the ferns 🔁 every day", text: "Water the ferns", lineNumber: 4, done: true, tappedAt: nine)
+        TaskSync.record(fromPage, store: store)
+        XCTAssertTrue(store.pendingToggles.isEmpty)
+        let written = await TaskSync.write(fromPage, store: store, client: StubGitHub.client())
+        XCTAssertEqual(written, .failed(TaskSync.repeatsMessage))
+        XCTAssertTrue(StubGitHub.seen.isEmpty)
+    }
+
+    func testARepeatingLineOnlyTheFileShowsIsNotTicked() async {
+        // A snapshot cached before tasks knew they repeat: only the file can tell.
+        let old = TaskItem(text: "Water the ferns", due: nil, priority: .none, sourcePath: path, lineNumber: 4)
+        store.daySnapshot = DaySnapshot(date: Date(), weather: nil, tasks: [old], taskError: nil, weatherError: nil)
+        StubGitHub.replies = [.file(repeatingBrief, sha: "s1")]
+        let outcome = await TaskSync.toggle(PendingToggle(old, tappedAt: nine), store: store, client: StubGitHub.client())
+        XCTAssertEqual(outcome, .failed(TaskSync.repeatsMessage))
+        XCTAssertEqual(StubGitHub.seen.map(\.method), ["GET"], "never written")
+        XCTAssertTrue(store.pendingToggles.isEmpty)
+        XCTAssertTrue(store.doneTasks.isEmpty, "not remembered")
+        XCTAssertEqual(snapshotTexts, ["Water the ferns"], "back on the widget")
+        XCTAssertEqual(store.daySnapshot?.tasks.first?.repeats, true)
+    }
+
+    func testARepeatingTaskIsNeverHidden() {
+        store.doneTasks = [DoneTask(path: path, key: "Water the ferns", day: "2026-11-10")]
+        let listed = TaskParser.parse(markdown: repeatingBrief, sourcePath: path)
+        XCTAssertEqual(TaskSync.visible(listed, store: store).count, 1)
+        XCTAssertTrue(store.pendingToggles.isEmpty, "not queued to be ticked")
+        // Nor by a tick left waiting by an earlier version.
+        store.pendingToggles = [PendingToggle(path: path, text: "Water the ferns", lineNumber: 4, done: true, tappedAt: nine)]
+        XCTAssertEqual(TaskSync.visible(listed, store: store).count, 1)
+        // The Brief page shows it as the file has it.
+        let line = Brief.TaskLine(text: "Water the ferns", done: false, lineNumber: 4, line: "- [ ] #todo Water the ferns 🔁 every day")
+        XCTAssertTrue(line.repeats)
+        let shown = TaskSync.shown(line, path: path, pending: store.pendingToggles, done: store.doneTasks)
+        XCTAssertFalse(shown.done)
+        XCTAssertNil(shown.pending)
+    }
+
+    func testASnapshotCachedBeforeRepeatsStillReads() {
+        let json = """
+        {"date":"2026-11-11T17:00:00Z","tasks":[{"text":"Water the ferns","priority":2,"sourcePath":"\(path)","lineNumber":7}]}
+        """
+        defaults.set(Data(json.utf8), forKey: "baroque.daySnapshot")
+        XCTAssertEqual(store.daySnapshot?.tasks.map(\.text), ["Water the ferns"])
+        XCTAssertEqual(store.daySnapshot?.tasks.first?.repeats, false)
+    }
+
     // MARK: Stored ticks
 
     func testStoredTicksDecodeOneByOne() {

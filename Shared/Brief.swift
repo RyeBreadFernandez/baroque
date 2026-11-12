@@ -48,6 +48,8 @@ enum Brief {
         var key: String { TaskToggle.key(text) }
         /// Its due date (📅), which tells it apart from a task with the same words.
         var due: Date? { TaskToggle.due(ofLine: line) }
+        /// A repeating task (🔁): the page shows its ring without the button, since it's ticked in Obsidian.
+        var repeats: Bool { TaskToggle.repeats(line) }
     }
 
     enum Block: Hashable {

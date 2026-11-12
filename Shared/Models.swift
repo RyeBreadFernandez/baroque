@@ -89,6 +89,8 @@ struct TaskItem: Codable, Identifiable, Hashable {
     var priority: TaskPriority
     var sourcePath: String
     var lineNumber: Int
+    /// A repeating task (🔁). The app never ticks one: ticked in Obsidian, the Tasks plugin makes the next one.
+    var repeats: Bool = false
 
     var isOverdue: Bool {
         guard let due else { return false }
@@ -182,6 +184,20 @@ enum WeatherCode {
         case 95, 96, 99: return "cloud.bolt.rain.fill"
         default: return "cloud.fill"
         }
+    }
+}
+
+extension TaskItem {
+    /// Cached snapshots decode field by field, so a task saved before `repeats` existed reads as not repeating
+    /// instead of making the whole snapshot unreadable.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        text = try c.decode(String.self, forKey: .text)
+        due = try c.decodeIfPresent(Date.self, forKey: .due)
+        priority = try c.decode(TaskPriority.self, forKey: .priority)
+        sourcePath = try c.decode(String.self, forKey: .sourcePath)
+        lineNumber = try c.decode(Int.self, forKey: .lineNumber)
+        repeats = (try? c.decodeIfPresent(Bool.self, forKey: .repeats)) ?? false
     }
 }
 

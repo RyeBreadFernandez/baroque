@@ -47,6 +47,21 @@ final class TaskToggleTests: XCTestCase {
         XCTAssertEqual(untick("- [ ] Open"), "- [ ] Open")
     }
 
+    func testARepeatingLineIsNeverChanged() {
+        let line = "- [ ] #todo Water the ferns 🔁 every week 📅 2026-11-11"
+        XCTAssertTrue(TaskToggle.repeats(line))
+        XCTAssertFalse(TaskToggle.repeats("- [ ] #todo Water the ferns 📅 2026-11-11"))
+        XCTAssertNil(tick(line))
+        XCTAssertNil(untick("- [x] Water the ferns 🔁 every week 📅 2026-11-04 ✅ 2026-11-04"))
+        let md = "# Today\n\(line)\n"
+        XCTAssertNil(TaskToggle.apply(to: md, line: line, near: 2, done: true, today: today))
+        XCTAssertNil(TaskToggle.apply(to: md, key: "Water the ferns", near: 2, done: true, today: today, due: TaskParser.parseDate("2026-11-11")))
+        let change = TaskToggle.change(in: md, key: "Water the ferns", near: 2, done: true, today: today, due: TaskParser.parseDate("2026-11-11"))
+        XCTAssertEqual(change?.repeats, true)
+        XCTAssertEqual(change?.markdown, md, "the file as it was")
+        XCTAssertEqual(change?.line, line)
+    }
+
     func testNotATaskOrOtherStatusIsNil() {
         XCTAssertNil(tick("Just a paragraph"))
         XCTAssertNil(tick("- A bullet"))

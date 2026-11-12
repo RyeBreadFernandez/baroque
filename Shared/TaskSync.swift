@@ -97,6 +97,8 @@ enum TaskSync {
 
     static let changedMessage = "This task changed in the vault. Pull down to refresh."
     static let retryMessage = "Not saved yet: will retry"
+    /// A repeating task (🔁) is never ticked here: ticked here, its recurrence would end.
+    static let repeatsMessage = "This task repeats: tick it in Obsidian, so the next one is made."
 
     /// Whether ticks in this file are remembered, so a task listed again unticked stays ticked: only the Daily Brief,
     /// which the morning brief rewrites each day. A tick anywhere else is written to its file and stays ticked there on
@@ -106,7 +108,8 @@ enum TaskSync {
     // MARK: Reading tasks
 
     /// The tasks that are still open: drops a task whose tick is waiting to be written, and, in the Daily Brief, one
-    /// that was ticked before and is listed again unticked (it queues that one to be ticked in the file again).
+    /// that was ticked before and is listed again unticked (it queues that one to be ticked in the file again). A
+    /// repeating task is never dropped: it's ticked in Obsidian.
     static func visible(_ tasks: [TaskItem]) -> [TaskItem] { visible(tasks, store: .shared) }
 
     static func visible(_ tasks: [TaskItem], store: Store, now: Date = Date()) -> [TaskItem] {
@@ -121,11 +124,11 @@ enum TaskSync {
             for tap in pending {
                 guard let i = target(of: tap, among: tasks, excluding: claimed) else { continue }
                 claimed.insert(i)
-                if tap.done { hidden.insert(i) }
+                if tap.done && !tasks[i].repeats { hidden.insert(i) }
             }
             // Ticked before in the Daily Brief and listed again: still ticked here, and ticked in the file again.
             var queued = false
-            for (i, task) in tasks.enumerated() where !claimed.contains(i) && remembers(task.sourcePath) {
+            for (i, task) in tasks.enumerated() where !claimed.contains(i) && !task.repeats && remembers(task.sourcePath) {
                 let tid = id(task.sourcePath, TaskToggle.key(task.text))
                 guard remembered.contains(tid) else { continue }
                 hidden.insert(i)
@@ -139,7 +142,8 @@ enum TaskSync {
     }
 
     /// How the Brief page shows its tasks, by line number: ticked if the file says so, if the tap waiting for that
-    /// task is a tick, or (in the Daily Brief) if it was ticked before; and the tap still waiting for it, if any.
+    /// task is a tick, or (in the Daily Brief) if it was ticked before; and the tap still waiting for it, if any. A
+    /// repeating task shows as the file has it.
     static func shown(_ tasks: [Brief.TaskLine], path: String, pending: [PendingToggle], done: [DoneTask])
         -> [Int: (done: Bool, pending: PendingToggle?)] {
         let items = tasks.map { TaskItem(text: $0.text, due: $0.due, priority: .none, sourcePath: path, lineNumber: $0.lineNumber) }
@@ -150,7 +154,8 @@ enum TaskSync {
         let remembered = remembers(path) ? Set(done.filter { $0.path == path }.map(\.key)) : []
         var out: [Int: (done: Bool, pending: PendingToggle?)] = [:]
         for (i, task) in tasks.enumerated() {
-            if let tap = taps[i] { out[task.lineNumber] = (tap.done, tap) }
+            if task.repeats { out[task.lineNumber] = (task.done, nil) }
+            else if let tap = taps[i] { out[task.lineNumber] = (tap.done, tap) }
             else if !task.done, remembered.contains(task.key) { out[task.lineNumber] = (true, nil) }
             else { out[task.lineNumber] = (task.done, nil) }
         }
@@ -176,15 +181,27 @@ enum TaskSync {
     // MARK: Ticking
 
     /// A tap on a task's ring, from the Brief page or the widget: kept at once, then written with any other ticks
-    /// waiting in that file. Never throws.
+    /// waiting in that file. Never throws. A tap on a repeating task is refused at once, without hiding the task (an
+    /// older widget timeline may still have a button on one).
     @discardableResult
     static func toggle(_ tap: PendingToggle, store: Store = .shared, client: GitHubClient? = nil) async -> Outcome {
+        if isRepeating(tap, store: store) { return .failed(repeatsMessage) }
         record(tap, store: store)
         return await write(tap, store: store, client: client)
     }
 
+    /// Whether a tap is on a repeating task, as far as can be told without the file: by its line, or else by the task
+    /// the widgets list for it. The write checks the file's line again (`finish`).
+    static func isRepeating(_ tap: PendingToggle, store: Store) -> Bool {
+        if let line = tap.line { return TaskToggle.repeats(line) }
+        guard let tasks = store.daySnapshot?.tasks, let i = target(of: tap, among: tasks) else { return false }
+        return tasks[i].repeats
+    }
+
     /// Writes a tap already kept by `record` (with anything else waiting in its file), and says how it went.
     static func write(_ tap: PendingToggle, store: Store = .shared, client: GitHubClient? = nil) async -> Outcome {
+        // `record` keeps no tap on a repeating line (the snapshot's task is gone by now, so only the line can tell).
+        if let line = tap.line, TaskToggle.repeats(line) { return .failed(repeatsMessage) }
         let outcomes = await save(path: tap.path, store: store, client: client)
         if let outcome = outcomes.first(where: { $0.tap.isSameTap(as: tap) })?.outcome { return outcome }
         // Another write (an earlier turn, or the other process) took it: saved, unless it's still waiting.
@@ -194,10 +211,12 @@ enum TaskSync {
 
     /// Keeps a tap without writing it: it waits in `pendingToggles` (replacing an earlier tap on the same task, so a
     /// tick and then an untick leave nothing to write), a tick in the Daily Brief is remembered (an untick forgets
-    /// it), and a ticked task leaves the cached snapshot, so the widgets drop it at their next redraw.
+    /// it), and a ticked task leaves the cached snapshot, so the widgets drop it at their next redraw. A tap on a
+    /// repeating task isn't kept.
     static func record(_ tap: PendingToggle, store: Store = .shared) {
         defer { reloadWidgets() }
         lock.withLock {
+            guard !isRepeating(tap, store: store) else { return }
             var fresh = tap
             fresh.error = nil
             fresh.retryHelps = true
@@ -260,6 +279,8 @@ enum TaskSync {
         var changed: [PendingToggle] = []
         /// The taps whose task isn't in the file any more, or can't be told apart from another.
         var lost: [PendingToggle] = []
+        /// The taps whose task repeats in the file (nothing changed), with its line.
+        var repeating: [(tap: PendingToggle, change: TaskToggle.Change)] = []
     }
 
     private static func applying(_ taps: [PendingToggle], to markdown: String, store: Store) -> Plan {
@@ -273,6 +294,7 @@ enum TaskSync {
             let change = tap.line.flatMap { TaskToggle.change(in: plan.text, line: $0, near: tap.lineNumber, done: tap.done, today: day) }
                 ?? TaskToggle.change(in: plan.text, key: tap.key, near: tap.lineNumber, done: tap.done, today: day, due: tap.due)
             guard let change else { plan.lost.append(tap); continue }
+            if change.repeats { plan.repeating.append((tap, change)); continue }
             if change.markdown != plan.text { plan.changed.append(tap) }
             plan.text = change.markdown
             plan.found.append((tap, change))
@@ -282,10 +304,15 @@ enum TaskSync {
 
     /// After a write (or none needed): the settled taps leave the queue unless tapped again meanwhile, the Brief's
     /// copy is the file as written, ticked tasks leave the snapshot and unticked ones come back, and the widgets redraw.
+    /// A task the file shows repeating was never ticked: it isn't remembered, and comes back to the widgets.
     private static func finish(path: String, plan: Plan, store: Store) -> [(tap: PendingToggle, outcome: Outcome)] {
         lock.withLock {
-            let settled = plan.found.map(\.tap) + plan.lost
+            let settled = plan.found.map(\.tap) + plan.lost + plan.repeating.map(\.tap)
             store.pendingToggles = store.pendingToggles.filter { p in !settled.contains { $0.isSameTap(as: p) } }
+            for (tap, change) in plan.repeating {
+                store.doneTasks = store.doneTasks.filter { !($0.path == path && $0.key == tap.key) }
+                addToSnapshot(path: path, change: change, store: store)
+            }
             if path == Brief.path(settings: store.settings) {
                 store.brief = BriefSnapshot(markdown: plan.text, fetchedAt: Date())
             }
@@ -297,6 +324,7 @@ enum TaskSync {
         }
         reloadWidgets()
         return plan.found.map { ($0.tap, Outcome.saved) } + plan.lost.map { ($0, Outcome.failed(changedMessage)) }
+            + plan.repeating.map { ($0.tap, Outcome.failed(repeatsMessage)) }
     }
 
     /// A try that failed: the taps stay pending with the reason.

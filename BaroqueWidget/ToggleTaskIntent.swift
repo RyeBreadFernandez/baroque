@@ -1,11 +1,12 @@
 import AppIntents
 
 /// The Today widget's ring (2026-11-11: tasks can be ticked everywhere). A tap ticks the task in the vault the way the
-/// Brief page does, through TaskSync: the tick is remembered and the task leaves the cached snapshot first, so the
-/// widget redraws without it; then the write is tried, and if it fails it stays in `Store.pendingToggles` for the app
-/// (or the widget's next load) to retry. WidgetKit reloads the timeline when `perform` returns.
+/// Brief page does, through TaskSync: the task leaves the cached snapshot first (and a Daily Brief tick is remembered),
+/// so the widget redraws without it; then the write is tried, and if it fails it stays in `Store.pendingToggles` for
+/// the app (or the widget's next load) to retry. WidgetKit reloads the timeline when `perform` returns.
 ///
-/// The widget wraps each ring: `Button(intent: ToggleTaskIntent(task)) { ring }.buttonStyle(.plain)`.
+/// The widget wraps each ring but a repeating task's: `Button(intent: ToggleTaskIntent(task)) { ring }.buttonStyle(.plain)`.
+/// A tap on a repeating task from an older timeline is refused by TaskSync, and the task stays.
 struct ToggleTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Tick a task"
     static var description = IntentDescription("Ticks a task off in your Obsidian vault.")

@@ -2,7 +2,8 @@ import Foundation
 
 /// Ticks and unticks a task's line in a markdown file the way Obsidian Tasks does: `- [ ]` becomes `- [x]` with
 /// ` ✅ YYYY-MM-DD` added (before a trailing `^block-id`), and unticking takes both away again. Everything else on the
-/// line, its indentation and every other line, line ending and byte order mark stay exactly as they were.
+/// line, its indentation and every other line, line ending and byte order mark stay exactly as they were. A repeating
+/// task (🔁) is never changed: it's ticked in Obsidian, where the Tasks plugin makes the next one.
 ///
 /// Foundation only, so ParserTests compiles it as it ships.
 enum TaskToggle {
@@ -51,6 +52,10 @@ enum TaskToggle {
     /// A checkbox line's due date (📅), in any state.
     static func due(ofLine line: String) -> Date? { task(ofLine: line)?.due }
 
+    /// A repeating task's line (🔁), in any state. It's never changed here: ticked in Obsidian, the Tasks plugin
+    /// adds the next one, and ticked here the recurrence would end.
+    static func repeats(_ line: String) -> Bool { task(ofLine: line)?.repeats ?? false }
+
     /// The same due date, or both none. Days, not instants, so a date read again later still matches.
     static func sameDue(_ a: Date?, _ b: Date?) -> Bool {
         switch (a, b) {
@@ -63,9 +68,9 @@ enum TaskToggle {
     // MARK: One line
 
     /// The line ticked (`done`) or unticked. A line already in that state comes back unchanged; a line that isn't a
-    /// task, or has a status other than open or done (cancelled `[-]`, say), is nil.
+    /// task, has a status other than open or done (cancelled `[-]`, say), or repeats (`repeats`) is nil.
     static func toggled(_ line: String, done: Bool, today: Date) -> String? {
-        guard var box = checkbox(line), box.isOpen || box.isDone else { return nil }
+        guard var box = checkbox(line), box.isOpen || box.isDone, !repeats(line) else { return nil }
         if done == box.isDone { return line }
         if done {
             box.status = "x"
@@ -108,9 +113,10 @@ enum TaskToggle {
 
     /// The markdown with one task ticked or unticked. The task is the line that reads exactly `original`: the one at
     /// `lineNumber` (1-based) if it's there, otherwise the only such line in the file. Nil when the line is missing,
-    /// or appears more than once and not at `lineNumber`: the task changed in the vault.
+    /// or appears more than once and not at `lineNumber`: the task changed in the vault. Nil too for a repeating task
+    /// (`repeats`), which is never changed.
     static func apply(to markdown: String, line original: String, near lineNumber: Int, done: Bool, today: Date) -> String? {
-        change(in: markdown, line: original, near: lineNumber, done: done, today: today)?.markdown
+        change(in: markdown, line: original, near: lineNumber, done: done, today: today).flatMap { $0.repeats ? nil : $0.markdown }
     }
 
     /// The same, finding the task by its key (`key(_:)`) rather than its exact line: for ticks made on the widget, and
@@ -119,7 +125,7 @@ enum TaskToggle {
     /// at `lineNumber`, it's nil rather than a guess. A line already in the wanted state counts as done (the markdown
     /// comes back unchanged) when no other line of the task needs changing.
     static func apply(to markdown: String, key wanted: String, near lineNumber: Int, done: Bool, today: Date, due: Date? = nil) -> String? {
-        change(in: markdown, key: wanted, near: lineNumber, done: done, today: today, due: due)?.markdown
+        change(in: markdown, key: wanted, near: lineNumber, done: done, today: today, due: due).flatMap { $0.repeats ? nil : $0.markdown }
     }
 
     /// What `apply` did: the file after it, and the task's line (1-based) as it reads now.
@@ -127,6 +133,8 @@ enum TaskToggle {
         var markdown: String
         var lineNumber: Int
         var line: String
+        /// The task repeats (🔁), so nothing was changed: `markdown` is the file as it was, `line` the task's line.
+        var repeats = false
     }
 
     static func change(in markdown: String, line original: String, near lineNumber: Int, done: Bool, today: Date) -> Change? {
@@ -165,7 +173,9 @@ enum TaskToggle {
             return Change(markdown: markdown, lineNumber: already + 1, line: file.text(at: already))
         }
         else { return nil }
-        guard let changed = toggled(file.text(at: pick), done: done, today: today) else { return nil }
+        let line = file.text(at: pick)
+        if repeats(line) { return Change(markdown: markdown, lineNumber: pick + 1, line: line, repeats: true) }
+        guard let changed = toggled(line, done: done, today: today) else { return nil }
         file.setText(changed, at: pick)
         return Change(markdown: file.joined, lineNumber: pick + 1, line: changed)
     }

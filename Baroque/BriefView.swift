@@ -102,19 +102,20 @@ struct BriefView: View {
         }
     }
 
-    /// A task: its ring is the tick button, and a line under it says while it's saving or why it isn't saved.
+    /// A task: its ring is the tick button, and a line under it says while it's saving or why it isn't saved. A
+    /// repeating task's ring is no button, and its line says it's ticked in Obsidian (ticked here, it would stop
+    /// repeating).
     private func taskRow(_ task: Brief.TaskLine, shown: (done: Bool, pending: PendingToggle?)) -> some View {
-        let note = self.note(for: task, waiting: shown.pending)
+        let note = task.repeats ? (text: "Repeats: tick it in Obsidian", problem: false) : self.note(for: task, waiting: shown.pending)
         return HStack(alignment: .firstTextBaseline, spacing: 0) {
-            Button { tap(task, done: !shown.done) } label: {
-                Image(systemName: shown.done ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 14))
-                    .foregroundStyle(shown.done ? Stone.goldMuted : Stone.copperInk)
-                    .frame(width: 28, height: 30, alignment: .leading)   // a tap area larger than the ring
-                    .contentShape(Rectangle())
+            if task.repeats {
+                ring(done: shown.done)
+                    .accessibilityLabel(Text(verbatim: "\(task.text). Repeats: tick it in Obsidian"))
+            } else {
+                Button { tap(task, done: !shown.done) } label: { ring(done: shown.done) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(verbatim: shown.done ? "Untick \(task.text)" : "Tick \(task.text)"))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text(verbatim: shown.done ? "Untick \(task.text)" : "Tick \(task.text)"))
             VStack(alignment: .leading, spacing: 3) {
                 Text(verbatim: task.text).strikethrough(shown.done).foregroundStyle(shown.done ? Stone.goldMuted : Stone.parchment)
                 if let note {
@@ -126,6 +127,14 @@ struct BriefView: View {
         }
         .font(RococoType.serif(17))
         .padding(.bottom, 4)
+    }
+
+    private func ring(done: Bool) -> some View {
+        Image(systemName: done ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 14))
+            .foregroundStyle(done ? Stone.goldMuted : Stone.copperInk)
+            .frame(width: 28, height: 30, alignment: .leading)   // a tap area larger than the ring
+            .contentShape(Rectangle())
     }
 
     /// "Saving…" while a tap is being written; then nothing, or why it isn't written yet.

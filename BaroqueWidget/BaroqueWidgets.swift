@@ -121,9 +121,12 @@ struct TodayWidgetView: View {
     var entry: DayEntry
 
     var body: some View {
-        // Each task's ring ticks it off (ToggleTaskIntent); the rest of the widget opens the Daily Brief.
+        // Each task's ring ticks it off (ToggleTaskIntent); the rest of the widget opens the Daily Brief. A repeating
+        // task's ring is no button: it's ticked in Obsidian, so the Tasks plugin makes the next one.
         RococoTodayView(snapshot: entry.snapshot, size: family == .systemSmall ? .small : family == .systemMedium ? .medium : .large,
-                        tick: { task, ring in AnyView(Button(intent: ToggleTaskIntent(task)) { ring }.buttonStyle(.plain)) })
+                        tick: { task, ring in
+                            task.repeats ? ring : AnyView(Button(intent: ToggleTaskIntent(task)) { ring }.buttonStyle(.plain))
+                        })
             .containerBackground(for: .widget) { RococoInk.stone }
             .widgetURL(URL(string: "baroque://brief"))   // opens the whole Daily Brief in the app (BriefView)
     }

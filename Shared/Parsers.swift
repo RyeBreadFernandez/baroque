@@ -17,7 +17,8 @@ enum TaskParser {
             let meta = extractMetadata(body)
             let text = cleanInline(meta.text)
             guard !text.isEmpty else { continue }
-            items.append(TaskItem(text: text, due: meta.due, priority: meta.priority, sourcePath: sourcePath, lineNumber: line.number))
+            items.append(TaskItem(text: text, due: meta.due, priority: meta.priority, sourcePath: sourcePath, lineNumber: line.number,
+                                  repeats: meta.repeats))
         }
         return items
     }
@@ -55,15 +56,18 @@ enum TaskParser {
         + "|🏁\\x{FE0F}?[ \\t]*[a-zA-Z]*"                                      // on completion
     )
 
-    private static func extractMetadata(_ body: String) -> (text: String, due: Date?, priority: TaskPriority) {
+    private static func extractMetadata(_ body: String) -> (text: String, due: Date?, priority: TaskPriority, repeats: Bool) {
         var due: Date?
         var priority: TaskPriority?
+        var repeats = false
         let ns = body as NSString
         var text = ""
         var cursor = 0
         for m in metadataRegex.matches(in: body, range: NSRange(location: 0, length: ns.length)) {
             text += ns.substring(with: NSRange(location: cursor, length: m.range.location - cursor)) + " "
             cursor = m.range.location + m.range.length
+            // By scalar, since 🔁 with a variation selector is another Character.
+            if ns.substring(with: m.range).unicodeScalars.first == "\u{1F501}" { repeats = true }
             if m.range(at: 1).location != NSNotFound,
                dueMarkers.contains(ns.substring(with: m.range(at: 1))),
                m.range(at: 2).location != NSNotFound,
@@ -75,7 +79,7 @@ enum TaskParser {
             }
         }
         text += ns.substring(from: cursor)
-        return (text, due, priority ?? TaskPriority.none)
+        return (text, due, priority ?? TaskPriority.none, repeats)
     }
 
     /// `yyyy-MM-dd` as the start of that day in the local time zone. Rejects impossible dates
