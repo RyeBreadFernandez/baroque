@@ -32,10 +32,13 @@ struct RococoTheme {
 
     static let original = RococoTheme(name: "Current", stone: Color(hex: 0xB5A483), texture: 1, ink: Color(hex: 0x3A2D23),
                                       inkSoft: Color(hex: 0x6B5B4C), terracotta: Color(hex: 0x9C5B3D), edge: .soft, scrim: 1)
+    // Quiet's and Carved's inkSoft and terracotta were darkened on 2026-11-11 to reach 4.5:1 against the stone as it
+    // renders (its 5th and 2nd percentiles, where the brushwork and shade fall), not only against the flat colour:
+    // scripts/check_contrast.py measures them on MockLab's README renders.
     static let quiet = RococoTheme(name: "Quiet", stone: Color(hex: 0xDCD1BB), texture: 0.28, ink: Color(hex: 0x2B221B),
-                                   inkSoft: Color(hex: 0x56473A), terracotta: Color(hex: 0x8A4429), edge: .soft, scrim: 1.3)
+                                   inkSoft: Color(hex: 0x534437), terracotta: Color(hex: 0x713620), edge: .soft, scrim: 1.3)
     static let carved = RococoTheme(name: "Carved", stone: Color(hex: 0xDCD1BB), texture: 0.28, ink: Color(hex: 0x2B221B),
-                                    inkSoft: Color(hex: 0x56473A), terracotta: Color(hex: 0x8A4429), edge: .carved, scrim: 1.3)
+                                    inkSoft: Color(hex: 0x534437), terracotta: Color(hex: 0x713620), edge: .carved, scrim: 1.3)
     static let ivory = RococoTheme(name: "Ivory", stone: Color(hex: 0xEDE6D7), texture: 0.16, ink: Color(hex: 0x261E18),
                                    inkSoft: Color(hex: 0x53453A), terracotta: Color(hex: 0x86402A), edge: .crisp, scrim: 1.4)
     static let options = [original, quiet, carved, ivory]
