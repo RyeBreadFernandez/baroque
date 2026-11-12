@@ -51,10 +51,7 @@ struct ContentView: View {
                     .disabled(isRefreshing)
                 }
             }
-            .onAppear {
-                latText = String(format: "%.4f", settings.latitude)
-                lonText = String(format: "%.4f", settings.longitude)
-            }
+            .onAppear { showCoordinates(settings) }
             .task { await refresh() }
             .onOpenURL { url in
                 if url.scheme == Brief.url.scheme, url.host == Brief.url.host { showBrief = true }
@@ -107,10 +104,11 @@ struct ContentView: View {
             field("Repository", $settings.githubRepo)
             field("Branch", $settings.githubBranch)
             SecureField("Personal access token", text: $token)
+            field("Obsidian vault", $settings.obsidianVault)
         } header: {
             StoneHeader("GitHub (Obsidian vault)")
         } footer: {
-            StoneFooter("Create a fine-grained token at github.com → Settings → Developer settings → Personal access tokens, scoped to this repository with read-only Contents permission. It is stored in the Keychain.")
+            StoneFooter("Create a fine-grained token at github.com → Settings → Developer settings → Personal access tokens, scoped to this repository with Contents: Read and write, so ticked tasks can be saved to the vault. It is stored in the Keychain. The vault name is the one Obsidian shows, for Open in Obsidian.")
         }
     }
 
@@ -124,7 +122,6 @@ struct ContentView: View {
                 .textInputAutocapitalization(.never)
             field("Daily note folder", $settings.dailyNoteFolder)
             field("Daily note format", $settings.dailyNoteFormat)
-            Stepper("Max tasks shown: \(settings.maxTasks)", value: $settings.maxTasks, in: 1...8)
             Toggle("Include undated tasks", isOn: $settings.includeUndatedTasks)
             LabeledContent("Today's daily note", value: DataLoader.dailyNotePath(settings: settings))
                 .font(.footnote)
@@ -152,12 +149,13 @@ struct ContentView: View {
     private var locationSection: some View {
         Section {
             Button {
+                // Fills in the fields; Save & Refresh keeps it (LocationHelper's status line says so).
                 location.requestOnce { lat, lon, city in
                     settings.latitude = lat
                     settings.longitude = lon
                     settings.cityName = city
-                    latText = String(format: "%.4f", lat)
-                    lonText = String(format: "%.4f", lon)
+                    settings.locationSet = true
+                    showCoordinates(settings)
                 }
             } label: {
                 HStack {
@@ -169,7 +167,6 @@ struct ContentView: View {
             if !location.status.isEmpty {
                 Text(location.status).font(.footnote).foregroundStyle(Stone.goldMuted)
             }
-            TextField("City label", text: $settings.cityName)
             HStack {
                 TextField("Latitude", text: $latText).keyboardType(.numbersAndPunctuation)
                 TextField("Longitude", text: $lonText).keyboardType(.numbersAndPunctuation)
@@ -178,7 +175,7 @@ struct ContentView: View {
         } header: {
             StoneHeader("Weather location")
         } footer: {
-            StoneFooter("Weather comes from Open-Meteo, no account needed. The location is stored once; the widget does not track you.")
+            StoneFooter("Weather comes from Open-Meteo, no account needed. Use your current location or type a latitude and longitude, then tap Save & Refresh; until then the widgets ask for one. The location is stored once; the widgets don't track you.")
         }
     }
 
@@ -254,14 +251,14 @@ struct ContentView: View {
 
     private var aboutSection: some View {
         Section {
+            // Fetches with the saved settings, then reloads every widget (refresh), and says how it went above.
             Button("Reload all widgets now") {
-                WidgetCenter.shared.reloadAllTimelines()
-                statusMessage = "Asked iOS to reload widgets."
+                Task { await refresh() }
             }
+            .disabled(isRefreshing)
             Button("Reset to defaults", role: .destructive) {
                 settings = .default
-                latText = String(format: "%.4f", settings.latitude)
-                lonText = String(format: "%.4f", settings.longitude)
+                showCoordinates(settings)
             }
         } footer: {
             StoneFooter("Baroque: painted widgets for your home screen. Add them from the widget gallery under \"Baroque\".")
@@ -294,24 +291,42 @@ struct ContentView: View {
 
     /// The large Day widget's line: one past the Quote widget's, as in the widget.
     private var heroQuote: Quote {
-        let list = quoteSnapshot?.quotes ?? []
-        let pool = list.isEmpty ? DataLoader.fallbackQuotes : list
-        let i = DataLoader.quoteIndex(count: pool.count, offset: Store.shared.quoteOffset, at: Date(), settings: settings)
-        return pool[(i + 1) % pool.count]
+        let pool = DataLoader.quotePool(quoteSnapshot)
+        return pool[DataLoader.dayQuoteIndex(count: pool.count, offset: Store.shared.quoteOffset, at: Date(), settings: settings)]
     }
 
     private var currentQuote: Quote {
-        let list = quoteSnapshot?.quotes ?? []
-        let pool = list.isEmpty ? DataLoader.fallbackQuotes : list
+        let pool = DataLoader.quotePool(quoteSnapshot)
         return pool[DataLoader.quoteIndex(count: pool.count, offset: Store.shared.quoteOffset, at: Date(), settings: settings)]
     }
 
+    /// The coordinate fields for `s`: empty until a location is set.
+    private func showCoordinates(_ s: BaroqueSettings) {
+        latText = SettingsInput.text(s.latitude, set: s.locationSet)
+        lonText = SettingsInput.text(s.longitude, set: s.locationSet)
+    }
+
+    // Saves only input that makes sense. Otherwise nothing is saved: the status line says why and the field that was
+    // wrong goes back to its saved value.
     private func saveAndRefresh() {
-        if let lat = Double(latText.trimmingCharacters(in: .whitespaces)) { settings.latitude = lat }
-        if let lon = Double(lonText.trimmingCharacters(in: .whitespaces)) { settings.longitude = lon }
-        Store.shared.settings = settings
-        Store.shared.githubToken = token
-        Task { await refresh() }
+        let saved = Store.shared.settings
+        switch SettingsInput.apply(latitude: latText, longitude: lonText, to: settings) {
+        case .failure(let problem):
+            statusMessage = problem.message
+            switch problem {
+            case .latitude: latText = SettingsInput.text(saved.latitude, set: saved.locationSet)
+            case .longitude: lonText = SettingsInput.text(saved.longitude, set: saved.locationSet)
+            case .repository:
+                settings.githubOwner = saved.githubOwner
+                settings.githubRepo = saved.githubRepo
+            }
+        case .success(let checked):
+            settings = checked
+            showCoordinates(checked)
+            Store.shared.settings = checked
+            Store.shared.githubToken = token
+            Task { await refresh() }
+        }
     }
 
     // Fetches with the stored settings, updates the previews, then asks the widgets to follow.
@@ -326,11 +341,7 @@ struct ContentView: View {
         daySnapshot = day
         quoteSnapshot = quotes
         isRefreshing = false
-        var parts: [String] = []
-        parts.append("\(day.tasks.count) task(s)")
-        if let w = day.weather { parts.append("\(Int(w.temperature.rounded()))° \(w.label)") }
-        parts.append("\(quotes.quotes.count) quote(s)")
-        statusMessage = "Updated: " + parts.joined(separator: ", ")
+        statusMessage = SettingsInput.refreshLine(day: day, quotes: quotes, weatherAsked: Store.shared.settings.locationSet)
         WidgetCenter.shared.reloadAllTimelines()
     }
 }

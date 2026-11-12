@@ -3,7 +3,8 @@ import SwiftUI
 import AppIntents
 import UIKit
 
-// The widgets are drawn in the rococo look (Shared/Rococo*.swift): Day, Today, Quote and Battery.
+// The widgets are drawn in the rococo look (Shared/Rococo*.swift): Day, Today, Quote, Battery, Still Life and
+// Photograph.
 
 // MARK: - Bundle
 
@@ -23,50 +24,61 @@ struct BaroqueWidgetBundle: WidgetBundle {
 
 struct DayEntry: TimelineEntry {
     let date: Date
+    /// The day's data, dated at the entry (not at the fetch), so the photograph and the night glaze follow the clock.
     let snapshot: DaySnapshot
-    let settings: BaroqueSettings
     /// The large Day widget's line from the vault: the one after the Quote widget's, so the two differ.
     var quote: Quote? = nil
 }
 
+/// The Day and Today widgets' timelines: one fetch (shared by every widget that asks within `DataLoader.freshFor`),
+/// then an entry at every photograph change in the next day and, on the large Day, at every quote slot.
 struct DayProvider: TimelineProvider {
+    /// True for the Day widget: its large size shows a line from the vault. Today shares the rest.
+    var showsQuote = false
+
     func placeholder(in context: Context) -> DayEntry {
-        DayEntry(date: Date(), snapshot: DayProvider.sample, settings: Store.shared.settings, quote: DemoData.quotes[2])
+        DayEntry(date: Date(), snapshot: DayProvider.sample, quote: showsQuote ? DemoData.quotes[2] : nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (DayEntry) -> Void) {
-        let cached = Store.shared.daySnapshot ?? DayProvider.sample
-        completion(DayEntry(date: Date(), snapshot: cached, settings: Store.shared.settings, quote: DayProvider.quote(at: Date())))
+        completion(entry(at: Date(), snapshot: Store.shared.daySnapshot ?? DayProvider.sample, quotes: Store.shared.quoteSnapshot))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<DayEntry>) -> Void) {
+        // Only the large Day shows a quote, so only it fetches quotes (with no Quote widget placed, nothing else would)
+        // and takes a turn at each quote slot.
+        let withQuote = showsQuote && context.family == .systemLarge
         Task {
-            let snap = await DataLoader.loadDay()
-            let settings = Store.shared.settings
+            async let day = DataLoader.loadDay()
+            async let quotes = DayProvider.quotes(fetch: withQuote)
+            let (snap, quoteSnap) = await (day, quotes)
             let now = Date()
-            // Refresh in ~30 minutes. In between, re-draw when the photograph's turn changes (every three hours; the
-            // last turn of the day ends at midnight, when the date flips too).
-            let next = now.addingTimeInterval(30 * 60)
-            var entries = [DayEntry(date: now, snapshot: snap, settings: settings, quote: DayProvider.quote(at: now))]
-            let change = RococoPhotos.nextChange(after: now)
-            if change < next {
-                var later = snap
-                later.date = change
-                entries.append(DayEntry(date: change, snapshot: later, settings: settings, quote: DayProvider.quote(at: change)))
-            }
-            completion(Timeline(entries: entries, policy: .after(next)))
+            let dates = DataLoader.dayEntryDates(from: now, until: now.addingTimeInterval(24 * 3600),
+                                                 settings: Store.shared.settings, quotes: withQuote,
+                                                 photoChange: { RococoPhotos.nextChange(after: $0) })
+            // Refresh in about 30 minutes; the entries after that matter only when iOS reloads late.
+            completion(Timeline(entries: dates.map { entry(at: $0, snapshot: snap, quotes: quoteSnap) },
+                                policy: .after(now.addingTimeInterval(30 * 60))))
         }
     }
 
-    static var sample: DaySnapshot { DemoData.day() }
-
-    /// The cached quotes (the Quote widget fetches them), one step past the Quote widget's.
-    static func quote(at date: Date) -> Quote {
-        let cached = Store.shared.quoteSnapshot?.quotes ?? []
-        let list = cached.isEmpty ? DataLoader.fallbackQuotes : cached
-        let i = DataLoader.quoteIndex(count: list.count, offset: Store.shared.quoteOffset, at: date, settings: Store.shared.settings)
-        return list[(i + 1) % list.count]
+    /// An entry drawn at `date`: the snapshot carries the entry's own date (the stored one keeps the fetch's), and the
+    /// Day widget the quote for that slot.
+    private func entry(at date: Date, snapshot: DaySnapshot, quotes: QuoteSnapshot?) -> DayEntry {
+        var snap = snapshot
+        snap.date = date
+        guard showsQuote else { return DayEntry(date: date, snapshot: snap) }
+        let pool = DataLoader.quotePool(quotes)
+        let i = DataLoader.dayQuoteIndex(count: pool.count, offset: Store.shared.quoteOffset, at: date, settings: Store.shared.settings)
+        return DayEntry(date: date, snapshot: snap, quote: pool[i])
     }
+
+    /// The large Day's quotes: fetched when the cache is stale. The other sizes read the cache as it is.
+    private static func quotes(fetch: Bool) async -> QuoteSnapshot? {
+        fetch ? await DataLoader.loadQuotes() : Store.shared.quoteSnapshot
+    }
+
+    static var sample: DaySnapshot { DemoData.day() }
 }
 
 struct DayWidgetView: View {
@@ -92,11 +104,11 @@ struct DayWidget: Widget {
     let kind = "BaroqueDay"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: DayProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: DayProvider(showsQuote: true)) { entry in
             DayWidgetView(entry: entry)
         }
         .configurationDisplayName("Baroque Day")
-        .description("The sun's path carved in painted stone, the days ahead, and on large your Kings Canyon with the date, temperature and a line from your vault.")
+        .description("The sun's path carved in painted stone, the days ahead, and on large one of your photographs, a new one every three hours, with the date, the temperature, a quote and the weather.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }
@@ -137,7 +149,9 @@ struct NextQuoteIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         Store.shared.bumpQuoteOffset()
+        // The large Day shows the quote after this one, so it moves on too.
         WidgetCenter.shared.reloadTimelines(ofKind: "BaroqueQuote")
+        WidgetCenter.shared.reloadTimelines(ofKind: "BaroqueDay")
         return .result()
     }
 }
@@ -145,37 +159,39 @@ struct NextQuoteIntent: AppIntent {
 struct QuoteEntry: TimelineEntry {
     let date: Date
     let quote: Quote
-    let total: Int
     var error: String? = nil
 }
 
 struct QuoteProvider: TimelineProvider {
+    /// How many rotations one timeline lays out.
+    static let slots = 6
+
     func placeholder(in context: Context) -> QuoteEntry {
-        QuoteEntry(date: Date(), quote: DataLoader.fallbackQuotes[0], total: 1)
+        QuoteEntry(date: Date(), quote: DataLoader.fallbackQuotes[0])
     }
 
     func getSnapshot(in context: Context, completion: @escaping (QuoteEntry) -> Void) {
-        let quotes = Store.shared.quoteSnapshot?.quotes ?? DataLoader.fallbackQuotes
-        let list = quotes.isEmpty ? DataLoader.fallbackQuotes : quotes
-        let idx = DataLoader.quoteIndex(count: list.count, offset: Store.shared.quoteOffset, at: Date(), settings: Store.shared.settings)
-        completion(QuoteEntry(date: Date(), quote: list[idx], total: list.count))
+        let pool = DataLoader.quotePool(Store.shared.quoteSnapshot)
+        let idx = DataLoader.quoteIndex(count: pool.count, offset: Store.shared.quoteOffset, at: Date(), settings: Store.shared.settings)
+        completion(QuoteEntry(date: Date(), quote: pool[idx]))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<QuoteEntry>) -> Void) {
         Task {
-            let snap = await DataLoader.loadQuotes()
-            let list = snap.quotes.isEmpty ? DataLoader.fallbackQuotes : snap.quotes
             let settings = Store.shared.settings
             let step = DataLoader.quoteStep(settings: settings)
+            // The cache serves for as long as one timeline runs, so a tap on the quote (which reloads this timeline)
+            // shows the next one at once instead of waiting on GitHub. Save & Refresh in the app still fetches.
+            let snap = await DataLoader.loadQuotes(maxAge: Double(QuoteProvider.slots) * step)
+            let pool = DataLoader.quotePool(snap)
             let offset = Store.shared.quoteOffset
             let first = DataLoader.quoteSlot(at: Date(), settings: settings)
             // Six rotations ahead, on wall-clock slots so the sequence keeps moving across reloads.
             // The next-quote button bumps the offset, which shifts the whole sequence forward.
-            var entries: [QuoteEntry] = []
-            for i in 0..<6 {
-                let idx = (offset + first + i) % list.count
+            let entries = (0..<QuoteProvider.slots).map { i -> QuoteEntry in
                 let date = Date(timeIntervalSince1970: Double(first + i) * step)
-                entries.append(QuoteEntry(date: date, quote: list[idx], total: list.count, error: snap.error))
+                let idx = DataLoader.quoteIndex(count: pool.count, offset: offset, at: date, settings: settings)
+                return QuoteEntry(date: date, quote: pool[idx], error: snap.error)
             }
             completion(Timeline(entries: entries, policy: .atEnd))
         }
@@ -306,14 +322,20 @@ struct StillLifeView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
+        WidgetPicture(name: family == .systemLarge ? "RococoStillLifeLarge" : "RococoStillLife")
+    }
+}
+
+/// A painting filling the widget. It is the widget's content, not its container background, because iOS takes the
+/// container background away on tinted and clear home screens; behind it is the umber the pictures' words sit on.
+struct WidgetPicture: View {
+    var name: String
+
+    var body: some View {
         Color.clear
-            .containerBackground(for: .widget) {
-                Image(family == .systemLarge ? "RococoStillLifeLarge" : "RococoStillLife")
-                    .resizable()
-                    .interpolation(.high)
-                    .rococoFullColor()
-                    .scaledToFill()
-            }
+            .overlay { Image(name).resizable().interpolation(.high).rococoFullColor().scaledToFill() }
+            .clipped()
+            .containerBackground(for: .widget) { RococoInk.umber }
     }
 }
 
@@ -342,10 +364,7 @@ struct PhotographWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PhotographProvider()) { entry in
-            Color.clear
-                .containerBackground(for: .widget) {
-                    Image(RococoPhotos.small(at: entry.date)).resizable().interpolation(.high).rococoFullColor().scaledToFill()
-                }
+            WidgetPicture(name: RococoPhotos.small(at: entry.date))
         }
         .configurationDisplayName("Baroque Photograph")
         .description("Your own photographs, repainted in oils, and nothing else: a new one every three hours.")
