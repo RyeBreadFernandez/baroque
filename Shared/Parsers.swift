@@ -151,9 +151,12 @@ enum TaskParser {
     }
 
     /// The Daily Brief ends a task with where it came from: "Reply to Sam. (Sam, email, Nov 5)" -> ("Reply to Sam.",
-    /// "Sam, email, Nov 5"). The large Today widget sets the note as a caption. Text without one comes back whole.
-    static func sourceNote(_ text: String) -> (text: String, source: String?) {
+    /// "Sam, email, Nov 5"). The large Today widget sets the note as a caption. Only the brief's tasks
+    /// (`BaroqueSettings.dailyBriefPath`) carry one, so a task from any other file, "Finish essay (draft 2)", and text
+    /// without a note come back whole.
+    static func sourceNote(_ text: String, sourcePath: String) -> (text: String, source: String?) {
         let t = text.trimmingCharacters(in: .whitespaces)
+        guard sourcePath == BaroqueSettings.dailyBriefPath else { return (t, nil) }
         guard t.hasSuffix(")"), let open = t.range(of: " (", options: .backwards) else { return (t, nil) }
         let source = String(t[open.upperBound..<t.index(before: t.endIndex)]).trimmingCharacters(in: .whitespaces)
         let head = String(t[..<open.lowerBound]).trimmingCharacters(in: .whitespaces)

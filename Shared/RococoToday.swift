@@ -215,7 +215,7 @@ struct RococoTaskRow: View {
 
     var body: some View {
         let late = task.isOverdue(asOf: now)
-        let (text, source) = TaskParser.sourceNote(task.text)
+        let (text, source) = TaskParser.sourceNote(task.text, sourcePath: task.sourcePath)
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             RococoRing(late: late).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
             VStack(alignment: .leading, spacing: 2) {
