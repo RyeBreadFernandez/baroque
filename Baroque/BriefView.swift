@@ -1,63 +1,29 @@
 import SwiftUI
 
 // The whole Daily Brief (2026-11-06: "If I click on the daily brief widget can you make it so it pulls up the rest of
-// the brief"). The Today widget opens baroque://brief; the app fetches Daily Brief/Today.md from the vault on GitHub,
-// keeps the last copy for when it's offline, and sets it out like the note: the title, the summary, each section, its
-// tasks and its bullets. Open in Obsidian opens the note itself.
-
-enum Brief {
-    static let path = "Daily Brief/Today.md"
-    static let url = URL(string: "baroque://brief")!
-    /// The note in Obsidian on the phone, in the vault named as on the Mac.
-    static let obsidian = URL(string: "obsidian://open?vault=Obsidian%20Vault&file=Daily%20Brief%2FToday")!
-
-    enum Block: Hashable {
-        case title(String)
-        case section(String)
-        case task(String, done: Bool)
-        case bullet(String)
-        case paragraph(String)
-    }
-
-    /// The note's blocks, and its "generated" line from the front matter.
-    static func parse(_ markdown: String) -> (blocks: [Block], generated: String?) {
-        var lines = markdown.components(separatedBy: .newlines)
-        var generated: String?
-        if lines.first?.trimmingCharacters(in: .whitespaces) == "---",
-           let end = lines.dropFirst().firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == "---" }) {
-            for line in lines[1..<end] where line.hasPrefix("generated:") {
-                generated = line.dropFirst("generated:".count).trimmingCharacters(in: .whitespaces)
-            }
-            lines.removeSubrange(0...end)
-        }
-        var blocks: [Block] = []
-        for raw in lines {
-            let line = raw.trimmingCharacters(in: .whitespaces)
-            if line.isEmpty { continue }
-            if line.hasPrefix("## ") {
-                blocks.append(.section(String(line.dropFirst(3))))
-            } else if line.hasPrefix("# ") {
-                blocks.append(.title(String(line.dropFirst(2))))
-            } else if line.hasPrefix("- [ ] ") || line.lowercased().hasPrefix("- [x] ") {
-                let done = !line.hasPrefix("- [ ] ")
-                let text = TaskParser.parse(markdown: "- [ ] " + line.dropFirst(6), sourcePath: path).first?.text ?? String(line.dropFirst(6))
-                blocks.append(.task(text, done: done))
-            } else if line.hasPrefix("- ") || line.hasPrefix("* ") {
-                blocks.append(.bullet(TaskParser.cleanInline(String(line.dropFirst(2)))))
-            } else {
-                blocks.append(.paragraph(TaskParser.cleanInline(line)))
-            }
-        }
-        return (blocks, generated)
-    }
-}
+// the brief"). The Today widget opens baroque://brief; the app fetches the brief from the vault on GitHub, keeps the
+// last copy for when it's offline, and sets it out like the note: the title, the summary, each section, its tasks and
+// its bullets. Each task's ring ticks it in the vault (2026-11-11: "the tasks on the app should be clickable so that
+// it syncs with obsidian"), through TaskSync. Open in Obsidian opens the note itself. The reading is Shared/Brief.swift.
 
 struct BriefView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @State private var snapshot = Store.shared.brief
     @State private var error: String?
+    @State private var notice: String?
     @State private var loading = false
+    /// The note this page reads and ticks: the Daily Brief, or the first task path when the brief isn't one.
+    private let path = Brief.path(settings: Store.shared.settings)
+
+    // Ticks: what's waiting to be written, what's remembered, which taps on this page are being written now, and
+    // the problems of taps that are no longer waiting (the task changed in the vault).
+    @State private var pending = Store.shared.pendingToggles
+    @State private var remembered = Store.shared.doneTasks
+    @State private var saving: Set<String> = []
+    @State private var retrying = false
+    @State private var problems: [String: String] = [:]
 
     var body: some View {
         NavigationStack {
@@ -68,8 +34,8 @@ struct BriefView: View {
                     } else if loading {
                         ProgressView().tint(Stone.gold).frame(maxWidth: .infinity).padding(.top, 60)
                     }
-                    if let error {
-                        Label(error, systemImage: "exclamationmark.triangle")
+                    ForEach([error, notice].compactMap { $0 }, id: \.self) { line in
+                        Label(line, systemImage: "exclamationmark.triangle")
                             .font(RococoType.sans(13))
                             .foregroundStyle(Stone.copperInk)
                             .padding(.top, 18)
@@ -86,11 +52,14 @@ struct BriefView: View {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { openURL(Brief.obsidian) } label: { Label("Open in Obsidian", systemImage: "arrow.up.forward.app") }
+                    Button(action: openInObsidian) { Label("Open in Obsidian", systemImage: "arrow.up.forward.app") }
                 }
             }
             .refreshable { await load() }
             .task { await load() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await retry() } }
+            }
         }
         .tint(Stone.copperLight)
         .preferredColorScheme(.dark)
@@ -101,57 +70,101 @@ struct BriefView: View {
         ForEach(Array(note.blocks.enumerated()), id: \.offset) { _, block in
             switch block {
             case .title(let text):
-                Text(text).font(RococoType.serif(30)).foregroundStyle(Stone.gold)
+                Text(verbatim: text).font(RococoType.serif(30)).foregroundStyle(Stone.gold)
                     .padding(.bottom, 4)
-                Text(stamp(note.generated, fetchedAt: fetchedAt))
+                Text(verbatim: Brief.stamp(generated: note.generated, fetchedAt: fetchedAt))
                     .font(RococoType.sansMedium(9.5)).tracking(1.6).foregroundStyle(Stone.goldFaint)
                     .padding(.bottom, 14)
             case .section(let text):
-                Text(text.uppercased())
+                Text(verbatim: text.uppercased())
                     .font(RococoType.sansMedium(11)).tracking(2).foregroundStyle(Stone.gold)
                     .padding(.top, 22).padding(.bottom, 8)
                 Rectangle().fill(Stone.gold.opacity(0.3)).frame(height: 0.7).padding(.bottom, 10)
-            case .task(let text, let done):
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 14))
-                        .foregroundStyle(done ? Stone.goldMuted : Stone.copperInk)
-                    inline(text).strikethrough(done).foregroundStyle(done ? Stone.goldMuted : Stone.parchment)
-                }
-                .font(RococoType.serif(17))
-                .padding(.bottom, 10)
+            case .task(let task):
+                taskRow(task)
             case .bullet(let text):
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Circle().fill(Stone.gold).frame(width: 4, height: 4).alignmentGuide(.firstTextBaseline) { $0[.bottom] + 4 }
-                    inline(text).foregroundStyle(Stone.parchment)
+                    Text(verbatim: text).foregroundStyle(Stone.parchment)
                 }
                 .font(RococoType.serif(15.5))
                 .padding(.bottom, 8)
             case .paragraph(let text):
-                inline(text).font(RococoType.italic(17)).foregroundStyle(Stone.parchment)
+                Text(verbatim: text).font(RococoType.italic(17)).foregroundStyle(Stone.parchment)
                     .padding(.bottom, 6)
             }
         }
     }
 
-    /// Bold, italic and links inside a line, as Markdown has them.
-    private func inline(_ text: String) -> Text {
-        if let a = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-            return Text(a)
+    /// A task: its ring is the tick button, and a line under it says while it's saving or why it isn't saved.
+    private func taskRow(_ task: Brief.TaskLine) -> some View {
+        let shown = TaskSync.shown(task, path: path, pending: pending, done: remembered)
+        let note = self.note(for: task, waiting: shown.pending)
+        return HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Button { tap(task, done: !shown.done) } label: {
+                Image(systemName: shown.done ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 14))
+                    .foregroundStyle(shown.done ? Stone.goldMuted : Stone.copperInk)
+                    .frame(width: 28, height: 30, alignment: .leading)   // a tap area larger than the ring
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(verbatim: shown.done ? "Untick \(task.text)" : "Tick \(task.text)"))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: task.text).strikethrough(shown.done).foregroundStyle(shown.done ? Stone.goldMuted : Stone.parchment)
+                if let note {
+                    Text(verbatim: note.text)
+                        .font(RococoType.sans(11.5))
+                        .foregroundStyle(note.problem ? Stone.copperInk : Stone.goldFaint)
+                }
+            }
         }
-        return Text(text)
+        .font(RococoType.serif(17))
+        .padding(.bottom, 4)
     }
 
-    private func stamp(_ generated: String?, fetchedAt: Date) -> String {
-        let fetched = "FETCHED \(RococoWords.clock(fetchedAt).uppercased())"
-        guard let generated else { return fetched }
-        // "2026-11-06 05:42 PT" from the front matter: shown as a time, like the fetch.
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = TimeZone(identifier: "America/Los_Angeles")
-        f.dateFormat = "yyyy-MM-dd HH:mm"
-        let written = f.date(from: String(generated.prefix(16))).map { RococoWords.clock($0) } ?? generated
-        return "WRITTEN \(written.uppercased())  ·  \(fetched)"
+    /// "Saving…" while a tap is being written; then nothing, or why it isn't written yet.
+    private func note(for task: Brief.TaskLine, waiting: PendingToggle?) -> (text: String, problem: Bool)? {
+        if saving.contains(task.key) { return ("Saving…", false) }
+        if let waiting {
+            if let error = waiting.error { return waiting.retryHelps ? (TaskSync.retryMessage, true) : (error, true) }
+            return retrying ? ("Saving…", false) : (TaskSync.retryMessage, true)
+        }
+        return problems[task.key].map { ($0, true) }
+    }
+
+    private func tap(_ task: Brief.TaskLine, done: Bool) {
+        let request = PendingToggle(path: path, line: task.line, text: task.text, lineNumber: task.lineNumber, done: done)
+        problems[task.key] = nil
+        saving.insert(task.key)
+        TaskSync.record(request)
+        refreshTicks()
+        Task {
+            let outcome = await TaskSync.write(request)
+            saving.remove(task.key)
+            if case .failed(let reason) = outcome, !Store.shared.pendingToggles.contains(where: { $0.isSameTap(as: request) }) {
+                problems[task.key] = reason   // not waiting any more: the task changed in the vault
+            }
+            refreshTicks()
+        }
+    }
+
+    /// The page's copy of what's waiting and remembered, and the brief as the last write left it.
+    private func refreshTicks() {
+        let store = Store.shared
+        pending = store.pendingToggles
+        remembered = store.doneTasks
+        if let brief = store.brief, brief.fetchedAt > (snapshot?.fetchedAt ?? .distantPast) { snapshot = brief }
+    }
+
+    /// Writes whatever is waiting (ticks made offline, on the widget, or made again for a task listed anew).
+    private func retry() async {
+        guard !retrying, !Store.shared.pendingToggles.isEmpty else { return }
+        retrying = true
+        refreshTicks()
+        await TaskSync.retryPending()
+        retrying = false
+        refreshTicks()
     }
 
     private func load() async {
@@ -163,15 +176,30 @@ struct BriefView: View {
         loading = true
         defer { loading = false }
         do {
-            let text = try await GitHubClient(settings: store.settings, token: store.githubToken).fetchText(path: Brief.path)
+            let text = try await GitHubClient(settings: store.settings, token: store.githubToken).fetchText(path: path)
             let fresh = BriefSnapshot(markdown: text, fetchedAt: Date())
             store.brief = fresh
             snapshot = fresh
             error = nil
+            // A task ticked before that the brief lists again unticked shows ticked, and is ticked in the file again.
+            _ = TaskSync.visible(TaskParser.parse(markdown: text, sourcePath: path))
         } catch {
-            self.error = snapshot == nil
-                ? "Couldn't read \(Brief.path): \(error.localizedDescription)"
-                : "Showing the copy from \(RococoWords.clock(snapshot!.fetchedAt)); couldn't refresh: \(error.localizedDescription)"
+            self.error = snapshot.map { "Showing the copy from \(Brief.when($0.fetchedAt)); couldn't refresh: \(error.localizedDescription)" }
+                ?? "Couldn't read \(path): \(error.localizedDescription)"
+        }
+        refreshTicks()
+        await retry()
+    }
+
+    private func openInObsidian() {
+        notice = nil
+        let vault = Store.shared.settings.obsidianVault
+        guard let url = Brief.obsidianURL(vault: vault, path: path) else {
+            notice = "Couldn't make a link to \(path) in Obsidian."
+            return
+        }
+        openURL(url) { accepted in
+            if !accepted { notice = "Couldn't open Obsidian. Is it installed on this iPhone?" }
         }
     }
 }
