@@ -96,7 +96,8 @@ Tap a task's ring on the Today widget or on the Daily Brief page to tick it; on 
 | Seen | Fix |
 | --- | --- |
 | "No GitHub token" on a widget | Paste the token in the app and tap Save & Refresh |
-| "GitHub rejected the token (401)" | The token has expired or lacks Contents: Read-only on the vault |
+| "GitHub rejected the token (401)" | The token has expired or has no access to the vault |
+| "Your token can only read…" under a ticked task | Make a fine-grained token for the vault with Contents: Read and write, and paste it in the app |
 | "Not found: Daily Brief/Today.md" | The path doesn't exist on the branch; check the Tasks setting and that the vault has been pushed |
 | Widgets don't change after Save & Refresh | iOS budgets widget reloads; lock and unlock the phone, or wait a few minutes |
 | The build fails on App Groups | Tick the App Group in Signing & Capabilities for both targets once |

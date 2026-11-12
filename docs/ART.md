@@ -34,7 +34,7 @@ The widgets lay the painted limestone at 28 percent over a light stone colour (`
 
 ## Repainting the photographs
 
-`MockLab/Textures/rococo/photos.py` repaints the author's landscape photographs as Robert or Fragonard might have:
+`MockLab/Textures/rococo/photos.py` repaints the author's landscape photographs as Robert or Fragonard might have. Which photographs it reads is set in a git-ignored `photos.local.json` beside it (copy `photos.local.example.json`), so the repository never names the author's files:
 1. **Colour.** Each photo's colours move two thirds of the way toward the paintings'. The mean and spread of each channel are matched in Lab. The highlights are eased and the shadows deepened, the way an old canvas holds them.
 2. **Strokes.** It's repainted with strokes that follow its forms, along the direction of least change from the image's structure tensor. Where the image is flat (a sky), the strokes lie level, as Robert lays one in. Broad strokes go everywhere, then smaller ones, then fine ones only where there's detail.
 3. **Surface.** The paint gets bristle marks and ridges lit from the upper left, a canvas weave, a warm varnish and darker corners.

@@ -21,3 +21,6 @@ MockLab/Textures/rococo/photos.local.json
 
 # Working plans for Claude Code sessions (they name private details)
 docs/plans/
+
+# Claude Code worktrees
+.claude/worktrees/
