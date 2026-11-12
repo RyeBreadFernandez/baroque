@@ -37,6 +37,22 @@ struct PendingToggle: Codable, Equatable {
     }
 }
 
+extension PendingToggle {
+    /// Saved taps decode field by field, so a field added in a later version takes its default (`retryHelps` true)
+    /// instead of making the tap unreadable.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        path = try c.decode(String.self, forKey: .path)
+        line = try c.decodeIfPresent(String.self, forKey: .line)
+        text = try c.decode(String.self, forKey: .text)
+        lineNumber = try c.decode(Int.self, forKey: .lineNumber)
+        done = try c.decode(Bool.self, forKey: .done)
+        tappedAt = try c.decode(Date.self, forKey: .tappedAt)
+        error = try c.decodeIfPresent(String.self, forKey: .error)
+        retryHelps = try c.decodeIfPresent(Bool.self, forKey: .retryHelps) ?? true
+    }
+}
+
 /// A task ticked in the app or on the widget (`Store.doneTasks`), so it stays ticked when the morning brief lists it
 /// again unticked.
 struct DoneTask: Codable, Equatable {

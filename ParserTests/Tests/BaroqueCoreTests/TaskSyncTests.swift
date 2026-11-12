@@ -230,6 +230,27 @@ final class TaskSyncTests: XCTestCase {
         XCTAssertEqual(kept.last?.key, "New 2")
     }
 
+    // MARK: Stored ticks
+
+    func testStoredTicksDecodeOneByOne() {
+        // A tap saved before `retryHelps` existed, one that can't be read, and one that waits for a better token.
+        let taps = """
+        [{"path":"\(path)","text":"Water the ferns","lineNumber":7,"done":true,"tappedAt":"2026-11-11T17:00:00Z"},
+         {"path":"\(path)","lineNumber":"seven"},
+         {"path":"\(path)","text":"Call the bike shop","lineNumber":9,"done":true,"tappedAt":"2026-11-11T17:00:00Z",
+          "error":"Your token can only read.","retryHelps":false}]
+        """
+        defaults.set(Data(taps.utf8), forKey: "baroque.pendingToggles")
+        XCTAssertEqual(store.pendingToggles.map(\.text), ["Water the ferns", "Call the bike shop"])
+        XCTAssertEqual(store.pendingToggles.map(\.retryHelps), [true, false])
+
+        let done = """
+        [{"path":"\(path)","key":"Water the ferns","day":"2026-11-10"},{"path":3},{"path":"\(path)","key":"Call the bike shop","day":"2026-11-11"}]
+        """
+        defaults.set(Data(done.utf8), forKey: "baroque.doneTasks")
+        XCTAssertEqual(store.doneTasks.map(\.key), ["Water the ferns", "Call the bike shop"])
+    }
+
     func testTheBriefPageShowsWaitingAndRememberedTicks() {
         let line = Brief.TaskLine(text: "Water the ferns", done: false, lineNumber: 7, line: "- [ ] #todo Water the ferns")
         XCTAssertEqual(TaskSync.shown(line, path: path, pending: [], done: []).done, false)

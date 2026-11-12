@@ -92,14 +92,14 @@ final class Store {
 
     /// Ticks and unticks not yet written to the vault, oldest first (one per task: a later tap replaces an earlier).
     var pendingToggles: [PendingToggle] {
-        get { load(Key.pendingToggles) ?? [] }
+        get { loadEach(Key.pendingToggles) }
         set { save(newValue.isEmpty ? nil : newValue, Key.pendingToggles) }
     }
 
     /// Every task ticked in the app or on the widget, newest last, so a task the morning brief lists again stays
     /// ticked. Unticking forgets it; only the newest `doneTasksLimit` are kept.
     var doneTasks: [DoneTask] {
-        get { load(Key.doneTasks) ?? [] }
+        get { loadEach(Key.doneTasks) }
         set { save(newValue.isEmpty ? nil : Array(newValue.suffix(Store.doneTasksLimit)), Key.doneTasks) }
     }
 
@@ -120,6 +120,14 @@ final class Store {
     private func load<T: Decodable>(_ key: String) -> T? {
         guard let data = defaults.data(forKey: key) else { return nil }
         return try? decoder.decode(T.self, from: data)
+    }
+
+    /// A stored list read entry by entry: an entry that can't be read is left out (and dropped at the next save)
+    /// rather than losing every other one with it.
+    private func loadEach<T: Decodable>(_ key: String) -> [T] {
+        guard let data = defaults.data(forKey: key),
+              let entries = try? decoder.decode([EachEntry<T>].self, from: data) else { return [] }
+        return entries.compactMap(\.value)
     }
 
     private func save<T: Encodable>(_ value: T?, _ key: String) {
@@ -208,6 +216,12 @@ final class Store {
         githubToken = ""
     }
     #endif
+}
+
+/// One entry of a stored list, or nil when it can't be read (`Store.loadEach`).
+private struct EachEntry<T: Decodable>: Decodable {
+    let value: T?
+    init(from decoder: Decoder) throws { value = try? T(from: decoder) }
 }
 
 /// Where the token is kept, as the move out of defaults sees it (tests pass a fake rather than touch the Keychain).
