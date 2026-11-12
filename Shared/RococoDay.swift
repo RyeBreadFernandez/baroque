@@ -1,8 +1,10 @@
 import SwiftUI
+import WidgetKit
 
 // The Day widget in rococo: small is Sun Arc, the sun's path carved into painted limestone with the day gone inlaid
-// in gold; medium adds the days ahead beside it; large is the user's Kings Canyon, repainted, with the date and the
-// temperature, a line from the vault and the weather.
+// in gold; medium adds the days ahead beside it; large is one of the user's photographs, repainted, a new one every
+// three hours (RococoPhotos), with the date and the temperature, a line from the vault with who said it, and the
+// weather.
 
 struct RococoDayView: View {
     var snapshot: DaySnapshot
@@ -92,7 +94,11 @@ struct RococoDaysAhead: View {
 
     var body: some View {
         let size = BaroqueSize.small.designSize
-        let days = Array((snap.weather?.days ?? []).prefix(4))
+        // Only the days after the snapshot's own: after midnight, the forecast fetched yesterday still starts with the
+        // day that is now today.
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: snap.date)
+        let days = Array((snap.weather?.days ?? []).filter { cal.startOfDay(for: $0.date) > today }.prefix(4))
         ZStack(alignment: .topLeading) {
             Text("The days ahead").font(RococoType.serif(15.5)).foregroundStyle(RococoInk.ink)
                 .rococoBaseline(x: 16, y: 29, in: size)
@@ -117,10 +123,14 @@ struct RococoDaysAhead: View {
                             let symbol = WeatherCode.symbol(for: d.code)
                             RococoSymbol(name: symbol, material: symbol.hasPrefix("sun") ? .gold : .cream, size: 11)
                                 .frame(width: 22)
+                            // Wide enough for 112°  88° and -12°  -21° (about 49 points; anything wider shrinks a
+                            // little), and the day's name keeps 54, enough for "tomorrow".
                             (Text("\(Int(d.high.rounded()))°").foregroundColor(RococoInk.ink)
                                 + Text("  \(Int(d.low.rounded()))°").foregroundColor(RococoInk.inkFaint))
                                 .font(RococoType.serif(12))
-                                .frame(width: 46, alignment: .trailing)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .frame(width: 54, alignment: .trailing)
                         }
                         .frame(height: 24)
                     }
@@ -152,11 +162,14 @@ struct RococoSunArcMedium: View {
     }
 }
 
-/// The large widget: the user's Kings Canyon, repainted, its corners darkened as on an old canvas; the date and the
-/// temperature at the top right, the line from the vault in italic down the left, and the weather in spaced capitals.
+/// The large widget: one of the user's photographs in turn (`RococoPhotos.large(at:)`), repainted, its corners
+/// darkened as on an old canvas; the date and the temperature at the top right, the line from the vault in italic
+/// down the left with who said it, and the weather in spaced capitals. Both sets of words sit on a soft dark ground
+/// that follows them (`RococoWordsGround`), so they read on the brightest photograph by day.
 struct RococoHero: View {
     var snap: DaySnapshot
     var quote: Quote?
+    @Environment(\.widgetRenderingMode) private var mode
 
     var body: some View {
         let size = BaroqueSize.large.designSize
@@ -165,10 +178,13 @@ struct RococoHero: View {
         ZStack(alignment: .topLeading) {
             RococoPicture(name: RococoPhotos.large(at: snap.date), night: night)
             RococoCorners()
-            let k = RococoTheme.current.scrim
-            LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(min(0.9, 0.55 * k)), Color(hex: 0x3A2C1F).opacity(min(0.6, 0.22 * k)), .clear],
-                           startPoint: .leading, endPoint: UnitPoint(x: 0.7, y: 0.5))
-            LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(min(0.6, 0.3 * k)), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3))
+            // On tinted and clear home screens iOS would draw these shades in the words' own tint.
+            if mode != .accented {
+                let k = RococoTheme.current.scrim
+                LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(min(0.9, 0.55 * k)), Color(hex: 0x3A2C1F).opacity(min(0.6, 0.22 * k)), .clear],
+                               startPoint: .leading, endPoint: UnitPoint(x: 0.7, y: 0.5))
+                LinearGradient(colors: [Color(hex: 0x3A2C1F).opacity(min(0.6, 0.3 * k)), .clear], startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3))
+            }
             VStack(alignment: .trailing, spacing: 0) {
                 Text("\(RococoWords.month(snap.date)) \(RococoWords.day(snap.date))")
                     .font(RococoType.serif(17))
@@ -179,21 +195,29 @@ struct RococoHero: View {
             .foregroundStyle(RococoInk.cream)
             .shadow(color: RococoInk.shadow.opacity(0.5), radius: 4, x: 0, y: 1)
             .fixedSize()
+            .modifier(RococoWordsGround(strength: 0.18, night: night))
             .rococoBaseline(x: 330, y: 36, in: size, trailing: true)
-            VStack(alignment: .leading, spacing: 0) {
+            // From 112 points down to 22 above the foot. A long line shrinks to keep its author and the weather in
+            // place below it.
+            RococoWordsStack(cap: 150, room: size.height - 112 - 22) {
                 if let quote {
-                    // Long lines shrink to keep the weather in place below them.
                     Text(quote.text)
                         .font(RococoType.italic(27))
                         .lineSpacing(-1)
                         .foregroundStyle(RococoInk.cream)
                         .minimumScaleFactor(0.5)
                         .lineLimit(6)
-                        .frame(width: 196, alignment: .topLeading)
-                        .frame(maxHeight: 150, alignment: .topLeading)
-                        .fixedSize(horizontal: false, vertical: true)
+                    // Who said it, from the quote's own author line in the vault (never made up; none, no line).
+                    if let author = quote.author, !author.isEmpty {
+                        Text(author.uppercased())
+                            .font(RococoType.sansMedium(8))
+                            .tracking(1.5)
+                            .foregroundStyle(RococoInk.cream.opacity(0.85))
+                            .lineLimit(2)
+                            .padding(.top, 9)
+                    }
                     Rectangle().fill(RococoInk.cream.opacity(0.75)).frame(width: 20, height: 0.8)
-                        .padding(.top, 16)
+                        .padding(.top, quote.author?.isEmpty == false ? 12 : 16)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     if let w {
@@ -211,7 +235,8 @@ struct RococoHero: View {
                 .padding(.top, 13)
             }
             .shadow(color: RococoInk.shadow.opacity(0.5), radius: 5, x: 0, y: 1)
-            .frame(width: 200, alignment: .leading)
+            .modifier(RococoWordsGround(strength: 0.16, night: night))
+            .frame(width: 196, alignment: .topLeading)
             .offset(x: 22, y: 112)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
