@@ -378,8 +378,11 @@ enum QuoteParser {
     /// Short, and not a sentence: at most 80 characters, not ending in a full stop, question or exclamation mark.
     private static func looksLikeName(_ s: String) -> Bool {
         let t = s.trimmingCharacters(in: .whitespaces)
-        guard let last = t.last else { return false }
-        return t.count <= 80 && !".!?".contains(last)
+        guard let last = t.last, t.count <= 80, last != "!", last != "?" else { return false }
+        guard last == "." else { return true }
+        // A full stop ends a sentence, unless it ends a short capitalised abbreviation or initial: "Jr.", "St.", "J."
+        let word = t.split(separator: " ").last ?? ""
+        return word.count <= 3 && word.first?.isUppercase == true
     }
 
     private static let bulletRegex = MarkdownText.regex(#"^(?:[-*+]|\d{1,9}[.)])\s+(.*)$"#)

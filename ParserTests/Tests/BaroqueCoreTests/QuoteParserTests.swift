@@ -81,6 +81,9 @@ final class QuoteParserTests: XCTestCase {
         XCTAssertEqual(quotes("“Simplify, simplify.”\n- Know thyself."), [q("Simplify, simplify."), q("Know thyself.")])
         XCTAssertEqual(quotes("“Simplify, simplify.”\n- Is this the way?"), [q("Simplify, simplify."), q("Is this the way?")])
         XCTAssertEqual(quotes("“Simplify, simplify.”\n- Henry David Thoreau, Walden"), [q("Simplify, simplify.", "Henry David Thoreau, Walden")])
+        // A name may end in an abbreviation's full stop.
+        XCTAssertEqual(quotes("“The life of the law has not been logic: it has been experience.”\n- Oliver Wendell Holmes Jr."),
+                       [q("The life of the law has not been logic: it has been experience.", "Oliver Wendell Holmes Jr.")])
         let long = String(repeating: "a word ", count: 13)   // 91 characters: a sentence, not a name
         XCTAssertEqual(quotes("“Simplify, simplify.”\n- \(long)").count, 2)
     }
