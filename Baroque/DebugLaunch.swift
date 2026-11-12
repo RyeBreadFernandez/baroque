@@ -44,8 +44,8 @@ enum DebugLaunch {
         }
         let start = Date()
         var saved = 0
-        for (i, app) in ContentView.homeIcons.enumerated() {
-            guard let image = UIImage(named: ContentView.iconAsset(app)) else { continue }
+        for (i, app) in HomeIcons.apps.enumerated() {
+            guard let image = UIImage(named: HomeIcons.asset(app)) else { continue }
             do {
                 try await PHPhotoLibrary.shared().performChanges {
                     PHAssetChangeRequest.creationRequestForAsset(from: image).creationDate = start.addingTimeInterval(Double(i))
@@ -55,7 +55,7 @@ enum DebugLaunch {
                 print("Baroque -saveIcons: \(app) failed: \(error.localizedDescription)")
             }
         }
-        print("Baroque -saveIcons: saved \(saved) of \(ContentView.homeIcons.count)")
+        print("Baroque -saveIcons: saved \(saved) of \(HomeIcons.apps.count)")
     }
 }
 #endif
