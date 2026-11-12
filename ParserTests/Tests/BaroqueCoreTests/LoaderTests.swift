@@ -108,7 +108,7 @@ final class LoaderTests: XCTestCase {
     }
 
     func testNotFoundWithoutATokenSaysSo() {
-        let out = DataLoader.quoteOutcome(.failure(GitHubError.notFound(quotesPath)), cached: nil, path: quotesPath,
+        let out = DataLoader.quoteOutcome(.failure(GitHubError.notFound(quotesPath, repository: "owner/repo")), cached: nil, path: quotesPath,
                                           hasToken: false, now: noon)
         XCTAssertEqual(out.snapshot.error, GitHubError.noToken.localizedDescription)
     }

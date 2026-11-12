@@ -8,11 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		00D8005E74D078653D07547D /* SpringBoardHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7642BDC47B850DC5E913B129 /* SpringBoardHelpers.swift */; };
+		09339EBE4F85A09740040E00 /* Words.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95730688EA589D9474945F92 /* Words.swift */; };
 		0A71CCDF98D3F04386522E97 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA977FC190E83843C5965330 /* Theme.swift */; };
 		13D7909341A08601252C6F96 /* RococoDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5E16ACD7FF1827D79236DF /* RococoDay.swift */; };
+		1C6E52AC5F885D782868865E /* Words.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95730688EA589D9474945F92 /* Words.swift */; };
 		1FD5EF5EB3C76492B2469517 /* WeatherClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D1E098ADA6043F3754244F /* WeatherClient.swift */; };
 		208A171B67048E9D503D49DC /* RococoDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5E16ACD7FF1827D79236DF /* RococoDay.swift */; };
 		2B5DFA978824225B3E219D09 /* PaintTextures.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ACC5636EE48B331AEE0BEF84 /* PaintTextures.xcassets */; };
+		32158E97CF59604BFB55DCA1 /* SettingsInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 801BDB3F642955667DDF13C2 /* SettingsInput.swift */; };
 		3803F770BA96808DD4A85DB1 /* BriefView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB9FD1C9E49B030C81FA54D /* BriefView.swift */; };
 		3A7CF855CFD540B5760B4C93 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61465B04056954658948D58 /* TaskSync.swift */; };
 		3BEA1E5AA80B49752FFBA58B /* Sky.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150B35513880CDCEA93DB2A3 /* Sky.swift */; };
@@ -21,14 +24,18 @@
 		4765B8611F6CA5F424195AC2 /* BaroqueScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 159E1D85B8D5770A08060E3B /* BaroqueScreenshotTests.swift */; };
 		4C11FE091915D153D2A6CEF7 /* LocationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8962AFA0F2D13CD244098EFD /* LocationHelper.swift */; };
 		506EC9340628363F7A88AC01 /* HomeSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCAF414566177BFFB527FDC1 /* HomeSetup.swift */; };
+		529523F7BACD0B3BAA0C39E8 /* TaskToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0C5D84EDF9731EBAAE69A1 /* TaskToggle.swift */; };
 		56CABA88291D57E11846FE32 /* WidgetRenders.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE84047558A760D9F1C21AC /* WidgetRenders.swift */; };
 		5D37189C906FA664C2C9449B /* RococoBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713E634C6C4D7CDD0CB8827B /* RococoBattery.swift */; };
 		64B6D9178F18DBF0772DF4B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A50D43107EEF9AAE61832DC /* Assets.xcassets */; };
+		6AE1DF37EBC01BDB3A40EE73 /* SettingsInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 801BDB3F642955667DDF13C2 /* SettingsInput.swift */; };
 		747CC5731BA56E71C799EF45 /* GitHubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8C7F107F3A39B0572A6382 /* GitHubClient.swift */; };
 		78B34A961ED2DE085D8E639E /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB59A043CEBF2BE6177EF6FD /* Store.swift */; };
 		79E776D3856B3AE6A2E8D00A /* WeatherClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D1E098ADA6043F3754244F /* WeatherClient.swift */; };
 		82105EE67D238C0013145096 /* PaintTextures.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ACC5636EE48B331AEE0BEF84 /* PaintTextures.xcassets */; };
 		8CEBE79E6E15E502B8FA81F2 /* BaroqueWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A5BA03557D6204E0B162DB /* BaroqueWidgets.swift */; };
+		8F99A67A1E144B448C255DED /* Brief.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA1E22AC8165E2D9077DDFF /* Brief.swift */; };
+		934034CC1677658938D4E118 /* ToggleTaskIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5DDE890DFA2C0C3D8372D0 /* ToggleTaskIntent.swift */; };
 		962C953E34C795793F78C772 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 189741D8D4372274D9C8800C /* ContentView.swift */; };
 		9B0DC41B093C96831781DC67 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E10DB9A4E60F7F02EF02277 /* Models.swift */; };
 		9D977E0EE2FD04C631AA11B1 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61465B04056954658948D58 /* TaskSync.swift */; };
@@ -42,6 +49,8 @@
 		B473F13DA83F780DA1BCB652 /* RococoQuote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19FEFCBE1CD301D6098155CB /* RococoQuote.swift */; };
 		B55A2FDE4A1724470DEE6289 /* RococoToday.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77B294F6AE8E374319E98F03 /* RococoToday.swift */; };
 		B6080B6DA32076E4C51B3DC5 /* DataLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A097231CD639C340AE1A6BA2 /* DataLoader.swift */; };
+		B8C5E6D52EAF3D04201DAAE5 /* Brief.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA1E22AC8165E2D9077DDFF /* Brief.swift */; };
+		C16987737D2DFC47E5DAF778 /* TaskToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D0C5D84EDF9731EBAAE69A1 /* TaskToggle.swift */; };
 		C580B2C41A4F5899FDA31E5B /* DataLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A097231CD639C340AE1A6BA2 /* DataLoader.swift */; };
 		CB8D1A9C165DBA07BCFED5FC /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB59A043CEBF2BE6177EF6FD /* Store.swift */; };
 		D2C649EAAF673407F885A741 /* WidgetGalleryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33532632432D07011478E3F2 /* WidgetGalleryUITests.swift */; };
@@ -88,6 +97,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0D5DDE890DFA2C0C3D8372D0 /* ToggleTaskIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToggleTaskIntent.swift; sourceTree = "<group>"; };
 		12697D19DF414B669E440186 /* BaroqueApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaroqueApp.swift; sourceTree = "<group>"; };
 		150B35513880CDCEA93DB2A3 /* Sky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sky.swift; sourceTree = "<group>"; };
 		159E1D85B8D5770A08060E3B /* BaroqueScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaroqueScreenshotTests.swift; sourceTree = "<group>"; };
@@ -95,6 +105,7 @@
 		19FEFCBE1CD301D6098155CB /* RococoQuote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RococoQuote.swift; sourceTree = "<group>"; };
 		229BD6C6389EEBB34BA27C73 /* BaroqueWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = BaroqueWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		33532632432D07011478E3F2 /* WidgetGalleryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetGalleryUITests.swift; sourceTree = "<group>"; };
+		3D0C5D84EDF9731EBAAE69A1 /* TaskToggle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskToggle.swift; sourceTree = "<group>"; };
 		3F109913CDF29869B61568CA /* BaroqueUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BaroqueUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		49055F7A89F73FFE8DD65125 /* DebugLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLaunch.swift; sourceTree = "<group>"; };
 		5E10DB9A4E60F7F02EF02277 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -107,9 +118,11 @@
 		7BE63D9C3CB43B5FB71EA278 /* RococoStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RococoStyle.swift; sourceTree = "<group>"; };
 		7D5E16ACD7FF1827D79236DF /* RococoDay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RococoDay.swift; sourceTree = "<group>"; };
 		7E9A74CD61BAE08B8285C770 /* DemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoData.swift; sourceTree = "<group>"; };
+		801BDB3F642955667DDF13C2 /* SettingsInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsInput.swift; sourceTree = "<group>"; };
 		8962AFA0F2D13CD244098EFD /* LocationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationHelper.swift; sourceTree = "<group>"; };
 		91822B9745AC0C7C693740A9 /* Baroque.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Baroque.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9220822F72B4AF1E39BD74B4 /* BaroqueWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BaroqueWidget.entitlements; sourceTree = "<group>"; };
+		95730688EA589D9474945F92 /* Words.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Words.swift; sourceTree = "<group>"; };
 		9A50D43107EEF9AAE61832DC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A097231CD639C340AE1A6BA2 /* DataLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataLoader.swift; sourceTree = "<group>"; };
 		A7F2EA55F4F97E4005496E58 /* Baroque.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Baroque.entitlements; sourceTree = "<group>"; };
@@ -122,6 +135,7 @@
 		BDF3347B9D5F98AD2C967BF4 /* Parsers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parsers.swift; sourceTree = "<group>"; };
 		BF087F287E6C7B0AF999A45B /* Baroque.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Baroque.xcconfig; sourceTree = "<group>"; };
 		CA977FC190E83843C5965330 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		CCA1E22AC8165E2D9077DDFF /* Brief.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Brief.swift; sourceTree = "<group>"; };
 		D61465B04056954658948D58 /* TaskSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSync.swift; sourceTree = "<group>"; };
 		E1A5BA03557D6204E0B162DB /* BaroqueWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaroqueWidgets.swift; sourceTree = "<group>"; };
 		ECB9FD1C9E49B030C81FA54D /* BriefView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefView.swift; sourceTree = "<group>"; };
@@ -168,6 +182,7 @@
 				9220822F72B4AF1E39BD74B4 /* BaroqueWidget.entitlements */,
 				E1A5BA03557D6204E0B162DB /* BaroqueWidgets.swift */,
 				BD63AA3226A17873752D36D9 /* Info.plist */,
+				0D5DDE890DFA2C0C3D8372D0 /* ToggleTaskIntent.swift */,
 			);
 			path = BaroqueWidget;
 			sourceTree = "<group>";
@@ -194,6 +209,7 @@
 		EBC4AF233494427D2C559347 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				CCA1E22AC8165E2D9077DDFF /* Brief.swift */,
 				A097231CD639C340AE1A6BA2 /* DataLoader.swift */,
 				7E9A74CD61BAE08B8285C770 /* DemoData.swift */,
 				6A8C7F107F3A39B0572A6382 /* GitHubClient.swift */,
@@ -205,10 +221,13 @@
 				19FEFCBE1CD301D6098155CB /* RococoQuote.swift */,
 				7BE63D9C3CB43B5FB71EA278 /* RococoStyle.swift */,
 				77B294F6AE8E374319E98F03 /* RococoToday.swift */,
+				801BDB3F642955667DDF13C2 /* SettingsInput.swift */,
 				150B35513880CDCEA93DB2A3 /* Sky.swift */,
 				AB59A043CEBF2BE6177EF6FD /* Store.swift */,
 				D61465B04056954658948D58 /* TaskSync.swift */,
+				3D0C5D84EDF9731EBAAE69A1 /* TaskToggle.swift */,
 				B8D1E098ADA6043F3754244F /* WeatherClient.swift */,
+				95730688EA589D9474945F92 /* Words.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -362,6 +381,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				ABF4F1D582CAB2446F91C412 /* BaroqueApp.swift in Sources */,
+				B8C5E6D52EAF3D04201DAAE5 /* Brief.swift in Sources */,
 				3803F770BA96808DD4A85DB1 /* BriefView.swift in Sources */,
 				962C953E34C795793F78C772 /* ContentView.swift in Sources */,
 				C580B2C41A4F5899FDA31E5B /* DataLoader.swift in Sources */,
@@ -378,12 +398,15 @@
 				B473F13DA83F780DA1BCB652 /* RococoQuote.swift in Sources */,
 				DC7AD21571FF6643D1E58CFA /* RococoStyle.swift in Sources */,
 				D330531B28D986B3E4CAE1DC /* RococoToday.swift in Sources */,
+				6AE1DF37EBC01BDB3A40EE73 /* SettingsInput.swift in Sources */,
 				3BEA1E5AA80B49752FFBA58B /* Sky.swift in Sources */,
 				CB8D1A9C165DBA07BCFED5FC /* Store.swift in Sources */,
 				9D977E0EE2FD04C631AA11B1 /* TaskSync.swift in Sources */,
+				529523F7BACD0B3BAA0C39E8 /* TaskToggle.swift in Sources */,
 				0A71CCDF98D3F04386522E97 /* Theme.swift in Sources */,
 				79E776D3856B3AE6A2E8D00A /* WeatherClient.swift in Sources */,
 				56CABA88291D57E11846FE32 /* WidgetRenders.swift in Sources */,
+				09339EBE4F85A09740040E00 /* Words.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -392,6 +415,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8CEBE79E6E15E502B8FA81F2 /* BaroqueWidgets.swift in Sources */,
+				8F99A67A1E144B448C255DED /* Brief.swift in Sources */,
 				B6080B6DA32076E4C51B3DC5 /* DataLoader.swift in Sources */,
 				AB938A9E203F4F9EE407B83A /* DemoData.swift in Sources */,
 				AEBC0FA5B84BFDC047FB47EB /* GitHubClient.swift in Sources */,
@@ -402,10 +426,14 @@
 				DB75D0A726C71A26C82E08D9 /* RococoQuote.swift in Sources */,
 				B2BAE0A33D20A1CECE74CFB6 /* RococoStyle.swift in Sources */,
 				B55A2FDE4A1724470DEE6289 /* RococoToday.swift in Sources */,
+				32158E97CF59604BFB55DCA1 /* SettingsInput.swift in Sources */,
 				AB1FFD1162B91449A81E5BBA /* Sky.swift in Sources */,
 				78B34A961ED2DE085D8E639E /* Store.swift in Sources */,
 				3A7CF855CFD540B5760B4C93 /* TaskSync.swift in Sources */,
+				C16987737D2DFC47E5DAF778 /* TaskToggle.swift in Sources */,
+				934034CC1677658938D4E118 /* ToggleTaskIntent.swift in Sources */,
 				1FD5EF5EB3C76492B2469517 /* WeatherClient.swift in Sources */,
+				1C6E52AC5F885D782868865E /* Words.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

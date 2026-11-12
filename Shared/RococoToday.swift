@@ -36,18 +36,20 @@ struct RococoRing: View {
     }
 }
 
-/// A task's ring handed to `tick`: padded out to a 28 point square that takes the tap, then laid out at the ring's
-/// own 13 points, so the button is easy to hit and nothing around it moves.
+/// A task's ring handed to `tick`: padded out to a square that takes the tap (28 points, or the row's 24 where rows
+/// sit 24 points apart, so neighbouring rings never share a tap), then laid out at the ring's own 13 points, so the
+/// button is easy to hit and nothing around it moves.
 struct RococoTickRing: View {
     var task: TaskItem
     var late: Bool
+    var hit: CGFloat = 28
     var tick: (TaskItem, AnyView) -> AnyView
 
-    static let hitPadding: CGFloat = 7.5   // (28 - 13) / 2
+    private var hitPadding: CGFloat { (hit - 13) / 2 }
 
     var body: some View {
-        tick(task, AnyView(RococoRing(late: late).padding(Self.hitPadding).contentShape(Rectangle())))
-            .padding(-Self.hitPadding)
+        tick(task, AnyView(RococoRing(late: late).padding(hitPadding).contentShape(Rectangle())))
+            .padding(-hitPadding)
     }
 }
 
@@ -81,7 +83,7 @@ struct RococoTodayList: View {
             ForEach(Array(shown.enumerated()), id: \.offset) { _, t in
                 let late = t.isOverdue(asOf: snap.date)
                 HStack(spacing: 9) {
-                    RococoTickRing(task: t, late: late, tick: tick)
+                    RococoTickRing(task: t, late: late, hit: 24, tick: tick)
                     Text(t.text)
                         .font(RococoType.sans(11))
                         .foregroundStyle(late ? RococoInk.terracotta : RococoInk.ink)

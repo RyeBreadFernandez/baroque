@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var wallpaperStatus = ""
     /// The Daily Brief page, opened by the Today widget (baroque://brief).
     @State private var showBrief = false
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         Self.applyStoneNavigationBar()
@@ -53,6 +54,10 @@ struct ContentView: View {
             }
             .onAppear { showCoordinates(settings) }
             .task { await refresh() }
+            // Ticks that couldn't be saved (offline, or tapped on the widget) are tried again whenever the app opens.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { Task { await TaskSync.retryPending() } }
+            }
             .onOpenURL { url in
                 if url.scheme == Brief.url.scheme, url.host == Brief.url.host { showBrief = true }
             }
@@ -108,7 +113,12 @@ struct ContentView: View {
         } header: {
             StoneHeader("GitHub (Obsidian vault)")
         } footer: {
-            StoneFooter("Create a fine-grained token at github.com → Settings → Developer settings → Personal access tokens, scoped to this repository with Contents: Read and write, so ticked tasks can be saved to the vault. It is stored in the Keychain. The vault name is the one Obsidian shows, for Open in Obsidian.")
+            VStack(alignment: .leading, spacing: 6) {
+                if let problem = Store.shared.tokenProblem {
+                    StoneFooter(problem)
+                }
+                StoneFooter("Create a fine-grained token at github.com → Settings → Developer settings → Personal access tokens, scoped to this repository with Contents: Read and write, so ticked tasks can be saved to the vault. It is stored in the Keychain. The vault name is the one Obsidian shows, for Open in Obsidian.")
+            }
         }
     }
 
@@ -224,11 +234,11 @@ struct ContentView: View {
     private var iconsSection: some View {
         Section {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 14) {
-                ForEach(Self.homeIcons, id: \.self) { app in
-                    let image = Image(Self.iconAsset(app))
+                ForEach(HomeIcons.apps, id: \.self) { app in
+                    let image = Image(HomeIcons.asset(app))
                     ShareLink(item: image, preview: SharePreview(app, image: image)) {
                         VStack(spacing: 5) {
-                            IconThumbnail.image(Self.iconAsset(app)).resizable().aspectRatio(1, contentMode: .fit)
+                            IconThumbnail.image(HomeIcons.asset(app), points: 84).resizable().aspectRatio(1, contentMode: .fit)
                                 .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                             Text(app).font(.caption2).lineLimit(1).foregroundStyle(Stone.parchment)
                         }
@@ -237,7 +247,7 @@ struct ContentView: View {
                 }
             }
             .padding(.vertical, 6)
-            ShareLink(items: Self.homeIcons.map { Image(Self.iconAsset($0)) }) { image in
+            ShareLink(items: HomeIcons.apps.map { Image(HomeIcons.asset($0)) }) { image in
                 SharePreview("Baroque icon", image: image)
             } label: {
                 Label("Save all 24 icons", systemImage: "square.and.arrow.down")
@@ -281,14 +291,6 @@ struct ContentView: View {
         DaySnapshot(date: Date(), weather: nil, tasks: [], taskError: nil, weatherError: nil)
     }
 
-    /// The apps on the user's home screen, in order (dock, then pages one to three).
-    static let homeIcons = ["Claude", "Messages", "Safari", "Obsidian",
-                            "Gmail", "Photos", "Camera", "YouTube", "Settings", "Spotify", "Maps", "Calendar",
-                            "Weather", "AllTrails", "Uber Eats", "Netflix", "Equinox", "Find My", "Slack", "Clock",
-                            "Wallet", "App Store", "Files", "Venmo"]
-
-    static func iconAsset(_ app: String) -> String { "Icon" + app.replacingOccurrences(of: " ", with: "") }
-
     /// The large Day widget's line: one past the Quote widget's, as in the widget.
     private var heroQuote: Quote {
         let pool = DataLoader.quotePool(quoteSnapshot)
@@ -324,8 +326,12 @@ struct ContentView: View {
             settings = checked
             showCoordinates(checked)
             Store.shared.settings = checked
-            Store.shared.githubToken = token
-            Task { await refresh() }
+            // On a device the token goes only into the Keychain; if it refuses, say so rather than refresh with the old one.
+            if let problem = Store.shared.saveGitHubToken(token) {
+                statusMessage = problem
+            } else {
+                Task { await refresh() }
+            }
         }
     }
 
