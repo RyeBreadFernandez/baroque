@@ -323,13 +323,23 @@ struct RococoArcPath: Shape {
 
 // RococoPhotos, which photograph shows when, is in Words.swift.
 
-/// One of the repainted photographs (or the still life), filling its frame; darkened and cooled at night.
+/// One of the repainted photographs (or the still life, or the Daily Brief's picture of the day), filling its frame;
+/// darkened and cooled at night.
 struct RococoPicture: View {
-    var name: String
+    var image: Image
     var night = false
 
+    init(name: String, night: Bool = false) {
+        self.init(image: Image(name), night: night)
+    }
+
+    init(image: Image, night: Bool = false) {
+        self.image = image
+        self.night = night
+    }
+
     var body: some View {
-        Image(name)
+        image
             .resizable()
             .interpolation(.high)
             .rococoFullColor()

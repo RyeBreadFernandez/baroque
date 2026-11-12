@@ -28,6 +28,9 @@ struct DayEntry: TimelineEntry {
     let snapshot: DaySnapshot
     /// The large Day widget's line from the vault: the one after the Quote widget's, so the two differ.
     var quote: Quote? = nil
+    /// The large Today's band: the Daily Brief's picture of the day when the brief named it on the entry's day (nil:
+    /// the still life).
+    var picture: RococoBandPicture? = nil
 }
 
 /// The Day and Today widgets' timelines: one fetch (shared by every widget that asks within `DataLoader.freshFor`),
@@ -62,12 +65,15 @@ struct DayProvider: TimelineProvider {
         }
     }
 
-    /// An entry drawn at `date`: the snapshot carries the entry's own date (the stored one keeps the fetch's), and the
-    /// Day widget the quote for that slot.
+    /// An entry drawn at `date`: the snapshot carries the entry's own date (the stored one keeps the fetch's), the
+    /// Day widget the quote for that slot, and the Today widget the brief's picture if it's that day's.
     private func entry(at date: Date, snapshot: DaySnapshot, quotes: QuoteSnapshot?) -> DayEntry {
         var snap = snapshot
         snap.date = date
-        guard showsQuote else { return DayEntry(date: date, snapshot: snap) }
+        guard showsQuote else {
+            let picture = BriefPicture.shown(Store.shared.briefPicture, in: BriefPicture.folder, on: date)
+            return DayEntry(date: date, snapshot: snap, picture: picture.map { RococoBandPicture(file: $0.file, label: $0.alt) })
+        }
         let pool = DataLoader.quotePool(quotes)
         let i = DataLoader.dayQuoteIndex(count: pool.count, offset: Store.shared.quoteOffset, at: date, settings: Store.shared.settings)
         return DayEntry(date: date, snapshot: snap, quote: pool[i])
@@ -124,6 +130,7 @@ struct TodayWidgetView: View {
         // Each task's ring ticks it off (ToggleTaskIntent); the rest of the widget opens the Daily Brief. A repeating
         // task's ring is no button: it's ticked in Obsidian, so the Tasks plugin makes the next one.
         RococoTodayView(snapshot: entry.snapshot, size: family == .systemSmall ? .small : family == .systemMedium ? .medium : .large,
+                        picture: entry.picture,
                         tick: { task, ring in
                             task.repeats ? ring : AnyView(Button(intent: ToggleTaskIntent(task)) { ring }.buttonStyle(.plain))
                         })
@@ -140,7 +147,7 @@ struct TodayWidget: Widget {
             TodayWidgetView(entry: entry)
         }
         .configurationDisplayName("Baroque Today")
-        .description("Today's tasks from your Daily Brief on painted stone; medium adds the still life's roses, and large gives every task room to read. Tap for the whole brief.")
+        .description("Today's tasks from your Daily Brief on painted stone; medium adds the still life's roses, and large gives every task room to read under the brief's picture of the day. Tap for the whole brief.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
     }

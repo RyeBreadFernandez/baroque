@@ -21,16 +21,19 @@ enum DataLoader {
 
     // Fetches every task path. Returns nil tasks when nothing could be read, so callers keep their cache.
     // A missing daily note is normal and not an error; any other failure is reported even if other paths worked.
-    static func fetchTasks(client: GitHubClient, settings: BaroqueSettings) async -> (tasks: [TaskItem]?, error: Error?) {
+    // `brief` is the Daily Brief's text when it's one of the paths and was read, for its picture of the day.
+    static func fetchTasks(client: GitHubClient, settings: BaroqueSettings) async -> (tasks: [TaskItem]?, error: Error?, brief: String?) {
         let dailyPath = dailyNotePath(settings: settings)
         var all: [TaskItem] = []
         var firstError: Error?
         var anySuccess = false
+        var brief: String?
         for path in resolvedTaskPaths(settings: settings) {
             do {
                 let text = try await client.fetchText(path: path)
                 all.append(contentsOf: TaskParser.parse(markdown: text, sourcePath: path))
                 anySuccess = true
+                if path == BaroqueSettings.dailyBriefPath { brief = text }
             } catch GitHubError.notFound where path == dailyPath {
                 continue
             } catch {
@@ -38,9 +41,9 @@ enum DataLoader {
             }
         }
         // A private repo answers 404 without a token, which reads like "file missing". Say what's really wrong.
-        if !anySuccess && client.token.isEmpty { return (nil, GitHubError.noToken) }
-        if !anySuccess && firstError != nil { return (nil, firstError) }
-        return (all, firstError)
+        if !anySuccess && client.token.isEmpty { return (nil, GitHubError.noToken, nil) }
+        if !anySuccess && firstError != nil { return (nil, firstError, nil) }
+        return (all, firstError, brief)
     }
 
     /// How long a fetch serves every widget that asks. Day and Today share a provider, and iOS asks for each widget
@@ -124,6 +127,16 @@ enum DataLoader {
             return newer
         }
         store.daySnapshot = snap
+        // With the tasks saved, the brief's picture of the day: downloaded only when it's a new one, and waited for
+        // `BriefPicture.timeout` at most, so the timeline that follows draws it.
+        if let brief = t.brief {
+            let pictureClient = GitHubClient(settings: settings, token: client.token, session: BriefPicture.session)
+            let update = Task {
+                await BriefPicture.update(brief: brief, notePath: BaroqueSettings.dailyBriefPath, store: store,
+                                          folder: BriefPicture.folder, client: pictureClient)
+            }
+            await wait(for: update, until: Date().addingTimeInterval(BriefPicture.timeout))
+        }
         return snap
     }
 

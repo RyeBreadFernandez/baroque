@@ -1,0 +1,1 @@
+../../../Shared/BriefPicture.swift

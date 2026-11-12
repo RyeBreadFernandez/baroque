@@ -7,7 +7,7 @@ Painted iPhone home screen widgets, fed by an Obsidian vault. SwiftUI and Widget
 ## Widgets
 
 - **Day:** sunrise, sunset and the weather. The large size shows a repainted photograph with a quote.
-- **Today:** today's tasks from the vault; tick one to mark it done there. Tap it to read the whole daily brief.
+- **Today:** today's tasks from the vault; tick one to mark it done there. The large size shows the brief's picture of the day. Tap it to read the whole daily brief.
 - **Quote:** a quote from the vault, with who said it. Tap it for the next one.
 - **Battery, Still Life and Photograph:** the iPhone's charge, the flower painting, a photograph.
 
