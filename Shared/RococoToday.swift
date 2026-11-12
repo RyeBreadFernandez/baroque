@@ -1,14 +1,19 @@
+import ImageIO
 import SwiftUI
 
 // The Today widget in rococo: today's tasks from the vault on painted limestone, each with a carved ring to tick
 // (terracotta when late). Medium adds a panel of the flower still life the user sent, with a line in italic. Large
-// (2026-11-07, "a bigger version of the tasks list") lays the still life across the top and gives each task room for
-// two lines, its due note, and the brief's source note as a caption. The widget wraps each ring in its tick button
-// (`tick`), so tapping a ring ticks that task off.
+// (2026-11-07, "a bigger version of the tasks list") lays a picture across the top and gives each task room for two
+// lines, its due note, and the brief's source note as a caption. The picture is the Daily Brief's picture of the day
+// when the brief has one for today (2026-11-11, BriefPicture), otherwise the still life. The widget wraps each ring in
+// its tick button (`tick`), so tapping a ring ticks that task off.
 
 struct RococoTodayView: View {
     var snapshot: DaySnapshot
     var size: BaroqueSize
+    /// The large band's picture in place of the still life (the widget passes the Daily Brief's for the entry's day;
+    /// nil, as the app's preview and MockLab leave it, draws the still life).
+    var picture: RococoBandPicture? = nil
     /// Wraps each task's ring (the widget passes its tick button; the app's preview and MockLab leave it as it is).
     var tick: (TaskItem, AnyView) -> AnyView = { $1 }
 
@@ -17,9 +22,22 @@ struct RococoTodayView: View {
             switch size {
             case .small: RococoTodaySmall(snap: snapshot, tick: tick)
             case .medium: RococoTodayMedium(snap: snapshot, tick: tick)
-            case .large: RococoTodayLarge(snap: snapshot, tick: tick)
+            case .large: RococoTodayLarge(snap: snapshot, picture: picture, tick: tick)
             }
         }
+    }
+}
+
+/// A picture for the large Today's band: the Daily Brief's picture of the day, kept as a JPEG already cut to the band
+/// (BandImage, 656 x 164), and what it shows, for VoiceOver.
+struct RococoBandPicture: Equatable {
+    var file: URL
+    var label: String
+
+    /// The file read now, whole: a widget is drawn in one pass and can't wait for an image to load.
+    func image() -> CGImage? {
+        guard let source = CGImageSourceCreateWithURL(file as CFURL, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
     }
 }
 
@@ -159,10 +177,12 @@ struct RococoTodayMedium: View {
     }
 }
 
-/// The still life's bouquet across the top with "Today" and the date on its dark side; below it, the tasks at a
-/// reading size, each with its due note and, for the Daily Brief's tasks, where it came from.
+/// A picture across the top with "Today" and the date on its dark side: the Daily Brief's picture of the day when
+/// there's one (`picture`), otherwise the still life's bouquet. Below it, the tasks at a reading size, each with its
+/// due note and, for the Daily Brief's tasks, where it came from.
 struct RococoTodayLarge: View {
     var snap: DaySnapshot
+    var picture: RococoBandPicture? = nil
     var tick: (TaskItem, AnyView) -> AnyView = { $1 }
 
     var body: some View {
@@ -171,28 +191,34 @@ struct RococoTodayLarge: View {
         let night = !SkyClock(now: snap.date, weather: snap.weather).isDay
         ZStack(alignment: .topLeading) {
             RococoSlab()
-            // The band: the middle of the still life, darkened toward the words at its foot.
-            RococoPicture(name: "RococoStillLifeLarge", night: night)
-                .frame(width: 328, height: 82)
-                .overlay(RococoScrim {
-                    LinearGradient(colors: [RococoInk.umber.opacity(0.75), RococoInk.umber.opacity(0.2), .clear],
-                                   startPoint: .bottom, endPoint: .top)
-                })
-                .overlay(alignment: .bottomLeading) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("Today").font(RococoType.serif(28))
-                        Spacer()
-                        Text(RococoWords.month(snap.date) + " " + RococoWords.day(snap.date)).font(RococoType.italic(15))
-                    }
-                    .foregroundStyle(RococoInk.cream)
-                    .shadow(color: RococoInk.shadow.opacity(0.7), radius: 2, x: 0, y: 1)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 9)
+            Group {
+                if let picture, let image = picture.image() {
+                    RococoBriefBand(image: image, label: picture.label, date: snap.date, night: night)
+                } else {
+                    // The band: the middle of the still life, darkened toward the words at its foot.
+                    RococoPicture(name: "RococoStillLifeLarge", night: night)
+                        .frame(width: 328, height: 82)
+                        .overlay(RococoScrim {
+                            LinearGradient(colors: [RococoInk.umber.opacity(0.75), RococoInk.umber.opacity(0.2), .clear],
+                                           startPoint: .bottom, endPoint: .top)
+                        })
+                        .overlay(alignment: .bottomLeading) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("Today").font(RococoType.serif(28))
+                                Spacer()
+                                Text(RococoWords.month(snap.date) + " " + RococoWords.day(snap.date)).font(RococoType.italic(15))
+                            }
+                            .foregroundStyle(RococoInk.cream)
+                            .shadow(color: RococoInk.shadow.opacity(0.7), radius: 2, x: 0, y: 1)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 9)
+                        }
                 }
-                .clipShape(band)
-                .overlay(band.strokeBorder(LinearGradient(colors: [.black.opacity(0.25), .clear, .white.opacity(0.3)],
-                                                          startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
-                .offset(x: 10, y: 10)
+            }
+            .clipShape(band)
+            .overlay(band.strokeBorder(LinearGradient(colors: [.black.opacity(0.25), .clear, .white.opacity(0.3)],
+                                                      startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+            .offset(x: 10, y: 10)
 
             // As many tasks as fit: seven short ones, or fewer that wrap.
             ViewThatFits(in: .vertical) {
@@ -232,6 +258,71 @@ struct RococoTodayLarge: View {
             }
         }
         .frame(width: 312, alignment: .topLeading)
+    }
+}
+
+/// The large Today's band with the Daily Brief's picture of the day (cut to it by BandImage): glazed at night as the
+/// bundled pictures are (RococoPicture), and darkened toward its foot by the theme's darkening behind words. A painting
+/// may be much lighter than the still life, near white even, so "Today" and the date each sit on a soft ground of
+/// their own as well (RococoWordsGround), by night too, since the glaze alone doesn't darken a pale painting enough.
+struct RococoBriefBand: View {
+    var image: CGImage
+    var label: String
+    var date: Date
+    var night: Bool
+    /// The debug renders leave the words out, to measure what they sit on.
+    @Environment(\.rococoBandWordsHidden) private var wordsHidden
+
+    /// How dark the band's foot is (times the theme's `scrim`).
+    static let foot = 0.45
+    /// How strongly the ground behind each line darkens (times the theme's `scrim`): the least that holds both lines
+    /// at 4.5:1 on a white picture by day, the lightest case (measured on the -renderWidgets stand-ins).
+    static let ground = 0.46
+
+    var body: some View {
+        let k = RococoTheme.current.scrim
+        let picture = label.isEmpty ? Image(decorative: image, scale: 2) : Image(image, scale: 2, label: Text(label))
+        RococoPicture(image: picture, night: night)
+            .frame(width: 328, height: 82)
+            .overlay(RococoScrim {
+                LinearGradient(colors: [RococoInk.umber.opacity(min(0.9, Self.foot * k)), RococoInk.umber.opacity(min(0.6, Self.foot * 0.3 * k)), .clear],
+                               startPoint: .bottom, endPoint: .top)
+            })
+            .overlay(alignment: .bottomLeading) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Today").font(RococoType.serif(28)).modifier(Words(hidden: wordsHidden))
+                    Spacer()
+                    Text(RococoWords.month(date) + " " + RococoWords.day(date)).font(RococoType.italic(15)).modifier(Words(hidden: wordsHidden))
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 9)
+            }
+    }
+
+    /// Cream with the band's shadow, on a ground of its own (`night: false` keeps it by night).
+    private struct Words: ViewModifier {
+        var hidden: Bool
+
+        func body(content: Content) -> some View {
+            content
+                .foregroundStyle(RococoInk.cream)
+                .shadow(color: RococoInk.shadow.opacity(0.7), radius: 2, x: 0, y: 1)
+                .opacity(hidden ? 0 : 1)
+                .modifier(RococoWordsGround(strength: RococoBriefBand.ground, night: false))
+        }
+    }
+}
+
+private struct RococoBandWordsHiddenKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// The large Today's band over the Daily Brief's picture without its words, for the debug renders that measure what
+    /// the words sit on.
+    var rococoBandWordsHidden: Bool {
+        get { self[RococoBandWordsHiddenKey.self] }
+        set { self[RococoBandWordsHiddenKey.self] = newValue }
     }
 }
 
