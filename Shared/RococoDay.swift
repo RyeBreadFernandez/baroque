@@ -92,7 +92,11 @@ struct RococoDaysAhead: View {
 
     var body: some View {
         let size = BaroqueSize.small.designSize
-        let days = Array((snap.weather?.days ?? []).prefix(4))
+        // Only the days after the snapshot's own: after midnight, the forecast fetched yesterday still starts with the
+        // day that is now today.
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: snap.date)
+        let days = Array((snap.weather?.days ?? []).filter { cal.startOfDay(for: $0.date) > today }.prefix(4))
         ZStack(alignment: .topLeading) {
             Text("The days ahead").font(RococoType.serif(15.5)).foregroundStyle(RococoInk.ink)
                 .rococoBaseline(x: 16, y: 29, in: size)
@@ -117,10 +121,14 @@ struct RococoDaysAhead: View {
                             let symbol = WeatherCode.symbol(for: d.code)
                             RococoSymbol(name: symbol, material: symbol.hasPrefix("sun") ? .gold : .cream, size: 11)
                                 .frame(width: 22)
+                            // Wide enough for 112°  88° and -12°  -21° (about 49 points; anything wider shrinks a
+                            // little), and the day's name keeps 54, enough for "tomorrow".
                             (Text("\(Int(d.high.rounded()))°").foregroundColor(RococoInk.ink)
                                 + Text("  \(Int(d.low.rounded()))°").foregroundColor(RococoInk.inkFaint))
                                 .font(RococoType.serif(12))
-                                .frame(width: 46, alignment: .trailing)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                                .frame(width: 54, alignment: .trailing)
                         }
                         .frame(height: 24)
                     }
