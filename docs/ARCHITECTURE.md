@@ -5,7 +5,7 @@ Baroque is three things that ship together, plus two that don't:
 | Part | What it is | Where |
 | --- | --- | --- |
 | The app | Settings, the token, live widget previews, the Daily Brief page, home screen setup | `Baroque/` |
-| The widget extension | Six widgets and their timelines | `BaroqueWidget/` |
+| The widget extension | Seven widgets and their timelines | `BaroqueWidget/` |
 | Shared code | Only what both need: models, parsers, the GitHub and weather clients, the loader and cache, the rococo views | `Shared/`, compiled into both |
 | Parser tests | A Swift package that tests the real `Shared/` parsers (and the app's `SettingsInput`) through symlinks | `ParserTests/` |
 | The design lab | A macOS Swift package that renders widget looks as images | `MockLab/` |

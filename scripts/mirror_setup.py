@@ -448,8 +448,8 @@ def icon_file(words, app, below):
 # Baroque's widgets in the gallery, in the order of its page dots, and their display names (BaroqueWidgets.swift).
 GALLERY = ["Day small", "Day medium", "Day large", "Today small", "Today medium", "Today large",
            "Quote small", "Quote medium", "Quote large", "Battery small", "Still Life small", "Still Life large",
-           "Photograph small"]
-WIDGET_NAMES = ["Day", "Today", "Quote", "Battery", "Still Life", "Photograph"]
+           "Photograph small", "Days Ahead small"]
+WIDGET_NAMES = ["Day", "Today", "Quote", "Battery", "Still Life", "Photograph", "Days Ahead"]
 # The dots sit centred under the preview, 16.6 pt apart (measured with nine of them on 2026-11-05). The gallery shows
 # at most ten, shrinking the last ones, so only the first eight can be tapped where expected (2026-11-09); past those
 # add_widget steps one page at a time.

@@ -5,7 +5,7 @@ import XCTest
 //
 // Add-widget flow: long-press empty space (edit mode: Button "Edit" top left, "Done" top right)
 // -> "Edit" -> menu Button "Add Widget" -> SearchField "Search Widgets" -> type "Baroque" -> Cell "Baroque"
-// -> detail sheet with one page per widget and size, 13 of them in galleryOrder (PageIndicator value "page 3 of 13";
+// -> detail sheet with one page per widget and size, 14 of them in galleryOrder (PageIndicator value "page 3 of 13";
 // preview Button label "Baroque, Baroque Day", value "Widget, Large") -> Button " Add Widget" (leading space).
 // Placed widgets are Icon elements with identifier "Baroque" and value "Widget" (the app icon has an empty value).
 // Remove: in edit mode Button identifier "DeleteButton" at the widget's top-left corner
@@ -198,7 +198,8 @@ enum SB {
     static let galleryOrder = ["Baroque Day|Small", "Baroque Day|Medium", "Baroque Day|Large",
                                "Baroque Today|Small", "Baroque Today|Medium", "Baroque Today|Large",
                                "Baroque Quote|Small", "Baroque Quote|Medium", "Baroque Quote|Large", "Baroque Battery|Small",
-                               "Baroque Still Life|Small", "Baroque Still Life|Large", "Baroque Photograph|Small"]
+                               "Baroque Still Life|Small", "Baroque Still Life|Large", "Baroque Photograph|Small",
+                               "Baroque Days Ahead|Small"]
 
     static var galleryIndicator: XCUIElement {
         app.pageIndicators.matching(NSPredicate(format: "value BEGINSWITH 'page '")).firstMatch

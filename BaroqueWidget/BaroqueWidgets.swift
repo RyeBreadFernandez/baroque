@@ -17,6 +17,7 @@ struct BaroqueWidgetBundle: WidgetBundle {
         BatteryWidget()
         StillLifeWidget()
         PhotographWidget()
+        DaysAheadWidget()
     }
 }
 
@@ -380,6 +381,25 @@ struct PhotographWidget: Widget {
         }
         .configurationDisplayName("Baroque Photograph")
         .description("Your own photographs, repainted in oils, and nothing else: a new one every three hours.")
+        .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
+    }
+}
+
+// MARK: - Days Ahead widget
+
+/// The days ahead on their own (small): the panel the medium Day shows beside Sun Arc. It shares the Day widget's
+/// provider and its fetch, so it costs nothing more.
+struct DaysAheadWidget: Widget {
+    let kind = "BaroqueDaysAhead"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: DayProvider()) { entry in
+            RococoDaysAheadView(snapshot: entry.snapshot)
+                .containerBackground(for: .widget) { RococoInk.stone }
+        }
+        .configurationDisplayName("Baroque Days Ahead")
+        .description("The next four days in painted stone: each day's weather, its high and low, and a rainy day named in terracotta.")
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }

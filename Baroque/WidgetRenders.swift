@@ -94,6 +94,11 @@ enum WidgetRenders {
                     for (name, reading) in batteries {
                         write(RococoBatteryView(reading: reading), size: size, name: "\(device.name)-battery-small-\(name)", dir: dir)
                     }
+                    // The Days Ahead widget, in every Day state (its error line shows in the failed ones).
+                    for state in days {
+                        write(RococoDaysAheadView(snapshot: state.snapshot), size: size,
+                              name: "\(device.name)-days-ahead-small-\(state.name)", dir: dir)
+                    }
                     for time in photoTimes {
                         write(RococoPicture(name: RococoPhotos.small(at: time.date)), size: size,
                               name: "\(device.name)-photograph-small-\(time.name)", dir: dir)

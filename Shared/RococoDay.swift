@@ -91,6 +91,9 @@ struct RococoSunTime: View {
 /// likely to rain is named in terracotta.
 struct RococoDaysAhead: View {
     var snap: DaySnapshot
+    /// True on its own slab (the Days Ahead widget): with no Sun Arc beside it to show the weather's error line, it
+    /// shows it itself.
+    var showsError = false
 
     var body: some View {
         let size = BaroqueSize.small.designSize
@@ -103,8 +106,8 @@ struct RococoDaysAhead: View {
             Text("The days ahead").font(RococoType.serif(15.5)).foregroundStyle(RococoInk.ink)
                 .rococoBaseline(x: 16, y: 29, in: size)
             if days.isEmpty {
-                // Sun Arc beside it already shows any weather error.
-                Text("No forecast yet.")
+                // Beside Sun Arc, Sun Arc shows any weather error; on its own slab it says why there's no forecast.
+                Text(showsError ? (snap.weatherError ?? "No forecast yet.") : "No forecast yet.")
                     .font(RococoType.sans(9.5))
                     .foregroundStyle(RococoInk.terracotta)
                     .lineLimit(3)
@@ -137,9 +140,33 @@ struct RococoDaysAhead: View {
                 }
                 .frame(width: 132)
                 .offset(x: 16, y: 42)
+                // On its own, a failed fetch is named under the cached days (they end at 141 points).
+                if showsError, let error = snap.weatherError {
+                    Text(error)
+                        .font(RococoType.sans(8))
+                        .foregroundStyle(RococoInk.terracotta)
+                        .lineLimit(1)
+                        .frame(width: 132, alignment: .leading)
+                        .rococoBaseline(x: 16, y: 154, in: size)
+                }
             }
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
+    }
+}
+
+/// The days ahead on a slab of their own: the Days Ahead widget (small; 2026-11-11, "make the days ahead its own
+/// widget"). The same panel the medium Day shows beside Sun Arc, with the weather's error line when a fetch fails.
+struct RococoDaysAheadView: View {
+    var snapshot: DaySnapshot
+
+    var body: some View {
+        RococoFrame(size: .small) {
+            ZStack(alignment: .topLeading) {
+                RococoSlab()
+                RococoDaysAhead(snap: snapshot, showsError: true)
+            }
+        }
     }
 }
 
