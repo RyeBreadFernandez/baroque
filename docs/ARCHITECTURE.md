@@ -31,6 +31,10 @@ sequenceDiagram
     end
     DL->>DL: TaskParser → todaysAgenda
     DL->>S: save DaySnapshot (with any error)
+    opt the brief names a new picture of the day (15 s at most)
+        DL->>DL: BriefPicture.find → download (web: no token; vault: Contents API) → BandImage cut
+        DL->>S: save picture.jpg and Store.briefPicture
+    end
     DL-->>P: snapshot (fresh where it worked, cached where it didn't)
     P-->>WK: entries + reload policy
 ```
@@ -54,6 +58,15 @@ The vault is an Obsidian folder that the Obsidian Git plugin pushes to a private
   An author line directly under a quote in quotation marks that has none becomes its author. Under a bullet quote that's an indented sub-bullet or a line starting with an em or en dash (`— Author`); a plain bullet there is the next quote in the list. Under a quote on a line of its own, a plain `- Author` counts too, if it reads like a name (80 characters at most, not ending in `.`, `!` or `?`). Headings and other prose are ignored, so the quotes file can be organised freely. The widgets show the author under the quote (the Quote widget at every size, and the large Day); a quote with no author in the file shows none, as nothing is guessed.
 
 The task paths are a setting: one vault path per line, where `{daily}` expands to today's daily note (`daily note/MM.dd.yyyy - EEEE.md` by default). The default is the Daily Brief.
+
+### The brief's picture of the day
+
+The morning brief embeds one picture in `Today.md`, usually a public-domain painting from a museum's IIIF server, in a callout. The large Today widget lays it across its top in place of the still life.
+
+- **Finding it.** `BriefPicture.find` takes the first picture in the note: a Markdown image with an https URL (a title after the URL is fine), a relative path in the vault, or an embed like `![[pic.jpg|300]]`, inside blockquotes and callouts as anywhere else. Pictures in fenced code (a fence in a callout ends with the callout), inline code, `%%` comments and the front matter don't count, nor do embedded notes, http links or SVGs. A vault picture is looked for beside the note, then from the top of the vault (`vaultPaths`).
+- **Fetching it once.** After the day's snapshot is saved, `DataLoader` hands the brief's text to `BriefPicture.update` and waits 15 seconds at most. A picture the store already has is not fetched again. A new one is downloaded to a temporary file: from the web with a plain request and no token, from the vault through `GitHubClient.download` (raw, with the token). `BandImage` downsamples it with ImageIO (never decoding it whole, since the widget extension has little memory) and cuts the middle to 656 × 164, the band at 2 pixels per point, as a JPEG of a few tens of kilobytes.
+- **Keeping or clearing it.** A brief with no picture brings the flowers back. A download that fails keeps the last picture only if the brief named it today, and the same picture isn't tried again for an hour. The band shows the picture only on the day the brief named it, so after midnight it's the flowers until the brief is read again. Offline, the widget draws what's on file.
+- **Drawing it.** `RococoBriefBand` glazes it at night like the other pictures and darkens its foot by the theme's `scrim`. "Today" and the date each sit on their own soft ground (`RococoWordsGround`), by night too. They measure at least 5.3:1 on a white painting by day, the hardest case (`scripts/check_band_contrast.py`, on the `-renderWidgets` stand-ins). The picture's alt text is its VoiceOver label. On tinted and clear home screens the shades are left out as everywhere else, so the words can be hard to read on a very pale painting there.
 
 ### Writing to the vault
 
@@ -90,6 +103,8 @@ It fetches once and serves every widget. Day and Today share a provider, and iOS
 | `baroque.brief` | the last Daily Brief fetched in full |
 | `baroque.pendingToggles` | ticks and unticks not yet written to the vault |
 | `baroque.doneTasks` | the Daily Brief's ticks, remembered so a task the brief lists again stays ticked |
+| `baroque.briefPicture` | the brief's picture of the day on file: its source, alt text and the day the brief last named it (the JPEG itself is `Library/Caches/Brief picture/picture.jpg` in the App Group's container) |
+| `baroque.briefPictureFailure` | the last picture whose download failed, and when, so it waits an hour before another try |
 
 They live in the App Group's `UserDefaults` (`group.com.ryanfernandez.terra`). Settings decode field by field, so a field added in a later version takes its default instead of resetting what was entered, and a field no longer used, like the old "Max tasks shown" (`maxTasks`), still decodes.
 
@@ -164,7 +179,7 @@ iOS lets no app move icons, set the wallpaper or place widgets, so the app hands
 
 ## Tests
 
-- **Parser tests:** `ParserTests/` tests the parsers, the agenda ordering and the daily note paths against real-shaped Markdown, and ticking: the line change, tasks worded alike, repeating tasks, the ticks that stay ticked in the Daily Brief, and the GitHub writes against a stubbed `URLProtocol` (`cd ParserTests && swift test`).
+- **Parser tests:** `ParserTests/` tests the parsers, the agenda ordering and the daily note paths against real-shaped Markdown, and ticking: the line change, tasks worded alike, repeating tasks, the ticks that stay ticked in the Daily Brief, and the GitHub writes against a stubbed `URLProtocol`, and the brief's picture of the day: finding it, vault paths, keeping or clearing it, its stubbed download and its cut to the band (`cd ParserTests && swift test`).
 - **UI tests:** `BaroqueUITests/` drives SpringBoard on the simulator to place each widget on the home screen and screenshot it, fresh, cached and with a bad token (`scripts/capture_screenshots.sh`).
 
 ## The design lab
