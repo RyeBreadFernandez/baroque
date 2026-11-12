@@ -24,6 +24,7 @@ final class LocationHelper: NSObject, ObservableObject, CLLocationManagerDelegat
             manager.requestWhenInUseAuthorization()
         case .denied, .restricted:
             isWorking = false
+            completion = nil   // a later grant mustn't fill in the form unasked
             status = "Location permission denied. Enter coordinates manually or enable it in Settings."
         default:
             manager.requestLocation()
@@ -38,7 +39,8 @@ final class LocationHelper: NSObject, ObservableObject, CLLocationManagerDelegat
                 manager.requestLocation()
             } else if s == .denied || s == .restricted {
                 self.isWorking = false
-                self.status = "Location permission denied."
+                self.completion = nil
+                self.status = "Location permission denied. Enter coordinates manually or enable it in Settings."
             }
         }
     }
@@ -48,13 +50,15 @@ final class LocationHelper: NSObject, ObservableObject, CLLocationManagerDelegat
         let lat = loc.coordinate.latitude
         let lon = loc.coordinate.longitude
         Task { @MainActor in
-            var city = "Current location"
+            guard self.completion != nil else { return }   // nobody asked (or permission was refused meanwhile)
+            var place: String?
             if let placemarks = try? await CLGeocoder().reverseGeocodeLocation(loc), let p = placemarks.first {
-                city = p.locality ?? p.subAdministrativeArea ?? p.administrativeArea ?? city
+                place = p.locality ?? p.subAdministrativeArea ?? p.administrativeArea
             }
             self.isWorking = false
-            self.status = "Set to \(city)"
-            self.completion?(lat, lon, city)
+            // The form is filled in, not saved: Save & Refresh keeps it.
+            self.status = "Found \(place ?? "your location"). Tap Save & Refresh to keep it."
+            self.completion?(lat, lon, place ?? "Current location")
             self.completion = nil
         }
     }
