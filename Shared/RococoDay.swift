@@ -229,7 +229,7 @@ struct RococoHero: View {
             // place below it.
             RococoWordsStack(cap: 150, room: size.height - 112 - 22) {
                 if let quote {
-                    Text(quote.text)
+                    Text(RococoWords.quoted(quote.text))
                         .font(RococoType.italic(27))
                         .lineSpacing(-1)
                         .foregroundStyle(RococoInk.cream)

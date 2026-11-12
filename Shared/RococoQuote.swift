@@ -67,17 +67,18 @@ struct RococoQuoteView: View {
         let room: CGFloat = size == .small ? 136 : (size == .medium ? 128 : 319)
         return RococoWordsStack(cap: size == .large ? 170 : (size == .medium ? 96 : 92), room: room) {
             if script {
-                let parts = quote.text.replacingOccurrences(of: ".", with: "").split(separator: " ").map(String.init)
+                // Two lines, inside quotation marks: the first opens them, the second closes them.
+                let parts = RococoWords.inner(quote.text).replacingOccurrences(of: ".", with: "").split(separator: " ").map(String.init)
                 let half = (parts.count + 1) / 2
                 VStack(alignment: .leading, spacing: size == .large ? -12 : -8) {
-                    Text(parts.prefix(half).joined(separator: " ").capitalized)
-                    Text(parts.dropFirst(half).joined(separator: " ").capitalized)
+                    Text("\u{201C}" + parts.prefix(half).joined(separator: " ").capitalized)
+                    Text(parts.dropFirst(half).joined(separator: " ").capitalized + "\u{201D}")
                         .padding(.leading, size == .large ? 30 : 18)
                 }
                 .font(RococoType.script(size == .large ? 46 : (size == .medium ? 31 : 27)))
                 .fixedSize()
             } else {
-                Text(quote.text)
+                Text(RococoWords.quoted(quote.text))
                     .font(RococoType.italic(size == .large ? 24 : (size == .medium ? 15 : 14)))
                     .lineSpacing(-1)
                     // A long line shrinks a little, then ends in an ellipsis rather than become too small to read.

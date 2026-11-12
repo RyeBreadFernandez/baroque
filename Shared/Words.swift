@@ -158,4 +158,34 @@ enum RococoWords {
     static func fitsScript(_ text: String) -> Bool {
         text.count <= 26 && text.split(separator: " ").count <= 5
     }
+
+    /// The quote's words inside curly quotation marks, the author left outside them (2026-11-12: "I want the
+    /// quotations to be in the quotes part of the quote"). Marks the vault already put round the whole line are taken
+    /// off first, so they're never doubled, and quotation marks inside become single ones, as nested quotes are set.
+    static func quoted(_ text: String) -> String {
+        "\u{201C}" + inner(text) + "\u{201D}"
+    }
+
+    /// The words without marks round the whole line, their inner double quotation marks made single.
+    static func inner(_ text: String) -> String {
+        var t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let opens: Set<Character> = ["\u{201C}", "\"", "\u{201E}", "\u{00AB}"]
+        let closes: Set<Character> = ["\u{201D}", "\"", "\u{201C}", "\u{00BB}"]
+        if t.count >= 2, let first = t.first, let last = t.last, opens.contains(first), closes.contains(last) {
+            t = String(t.dropFirst().dropLast()).trimmingCharacters(in: .whitespaces)
+        }
+        var out = ""
+        var openNext = true   // straight marks take turns opening and closing
+        for c in t {
+            switch c {
+            case "\u{201C}": out.append("\u{2018}")
+            case "\u{201D}": out.append("\u{2019}")
+            case "\"":
+                out.append(openNext ? "\u{2018}" : "\u{2019}")
+                openNext.toggle()
+            default: out.append(c)
+            }
+        }
+        return out
+    }
 }
