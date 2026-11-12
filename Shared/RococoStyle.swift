@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // Baroque's widgets in the painted rococo of Hubert Robert's The Bathing Pool, the user's wallpaper (chosen 2026-11-04).
 // Ported from MockLab's travertine set drawn in its rococo style (MockLab/Sources/WSunArc/TVHome.swift with
@@ -70,21 +71,54 @@ enum RococoType {
 
 /// A rococo layout at its iPhone 17 design size, scaled to fill the widget (a point or two may be cropped at the
 /// edges on other phones; every layout keeps 14 pt clear of them).
+///
+/// On a tinted or clear home screen (accented rendering) iOS takes away the widget's background and draws everything
+/// that isn't a full-colour image in one tint, so the stone and the ink on it would come out the same colour and the
+/// words would vanish. There the frame tells its content (`rococoAccented`): the slab leaves out its stone, and the
+/// darkenings over pictures (`RococoScrim`) and the theme's edge are left out, so the words and the pictures show.
 struct RococoFrame<Content: View>: View {
     var size: BaroqueSize
     @ViewBuilder var content: Content
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.rococoAccented) private var accentedAbove
 
     var body: some View {
         let design = size.designSize
+        let accented = accentedAbove || renderingMode == .accented
         GeometryReader { geo in
             let scale = max(geo.size.width / design.width, geo.size.height / design.height)
             content
                 .frame(width: design.width, height: design.height)
-                .overlay(RococoEdge(theme: RococoTheme.current))
+                .overlay { if !accented { RococoEdge(theme: RococoTheme.current) } }
                 .scaleEffect(scale)
                 .frame(width: geo.size.width, height: geo.size.height)
         }
         .clipped()
+        .environment(\.rococoAccented, accented)
+    }
+}
+
+private struct RococoAccentedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True on a tinted or clear home screen, set by RococoFrame from WidgetKit's rendering mode (a preview can set it
+    /// to see the widgets that way). The stone and the scrims leave themselves out.
+    var rococoAccented: Bool {
+        get { self[RococoAccentedKey.self] }
+        set { self[RococoAccentedKey.self] = newValue }
+    }
+}
+
+/// A darkening laid over a picture so the words on it read. Left out on a tinted or clear home screen, where iOS would
+/// draw it in the tint, as a solid wash over the picture.
+struct RococoScrim<Content: View>: View {
+    @ViewBuilder var content: Content
+    @Environment(\.rococoAccented) private var accented
+
+    var body: some View {
+        if !accented { content }
     }
 }
 
@@ -123,9 +157,19 @@ struct RococoEdge: View {
 /// lower right).
 struct RococoSlab: View {
     var radius: CGFloat = 22
+    @Environment(\.rococoAccented) private var accented
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        if accented {
+            // Tinted or clear: no stone, so the words, drawn in the tint, read on the home screen behind.
+            Color.clear
+        } else {
+            slab(shape)
+        }
+    }
+
+    private func slab(_ shape: RoundedRectangle) -> some View {
         ZStack {
             RococoInk.stone
             Image("RococoLimestone").resizable().interpolation(.high).rococoFullColor().scaledToFill()
@@ -291,7 +335,7 @@ struct RococoPicture: View {
             .rococoFullColor()
             .scaledToFill()
             .saturation(night ? 0.7 : 1)
-            .overlay(Color(hex: 0x141B26).opacity(night ? 0.45 : 0).blendMode(.multiply))
+            .overlay(RococoScrim { Color(hex: 0x141B26).opacity(night ? 0.45 : 0).blendMode(.multiply) })
             .clipped()
     }
 }
@@ -299,8 +343,10 @@ struct RococoPicture: View {
 /// The darkened corners of an old canvas, so cream type reads on a bright sky.
 struct RococoCorners: View {
     var body: some View {
-        RadialGradient(colors: [.clear, RococoInk.umber.opacity(0.55)], center: UnitPoint(x: 0.45, y: 0.5),
-                       startRadius: 110, endRadius: 320)
+        RococoScrim {
+            RadialGradient(colors: [.clear, RococoInk.umber.opacity(0.55)], center: UnitPoint(x: 0.45, y: 0.5),
+                           startRadius: 110, endRadius: 320)
+        }
     }
 }
 

@@ -133,7 +133,9 @@ struct RococoTodayMedium: View {
                 .offset(x: 18, y: 13)
             ZStack(alignment: .topLeading) {
                 RococoPicture(name: "RococoFlowers", night: night)
-                LinearGradient(colors: [.clear, RococoInk.umber.opacity(0.45)], startPoint: .center, endPoint: .bottomTrailing)
+                RococoScrim {
+                    LinearGradient(colors: [.clear, RococoInk.umber.opacity(0.45)], startPoint: .center, endPoint: .bottomTrailing)
+                }
                 VStack(alignment: .leading, spacing: -4) {
                     Text("Small").font(RococoType.italic(17))
                     Text("steps,").font(RococoType.italic(17))
@@ -170,8 +172,10 @@ struct RococoTodayLarge: View {
             // The band: the middle of the still life, darkened toward the words at its foot.
             RococoPicture(name: "RococoStillLifeLarge", night: night)
                 .frame(width: 328, height: 82)
-                .overlay(LinearGradient(colors: [RococoInk.umber.opacity(0.75), RococoInk.umber.opacity(0.2), .clear],
-                                        startPoint: .bottom, endPoint: .top))
+                .overlay(RococoScrim {
+                    LinearGradient(colors: [RococoInk.umber.opacity(0.75), RococoInk.umber.opacity(0.2), .clear],
+                                   startPoint: .bottom, endPoint: .top)
+                })
                 .overlay(alignment: .bottomLeading) {
                     HStack(alignment: .firstTextBaseline) {
                         Text("Today").font(RococoType.serif(28))
