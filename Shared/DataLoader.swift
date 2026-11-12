@@ -54,8 +54,9 @@ enum DataLoader {
     /// The weather line until a location is saved in the app, instead of quietly showing the default city's weather.
     static let noLocation = "Set a location in the Baroque app"
 
-    /// How long a fetch waits for pending ticks to reach the vault, counted from its start. The ticks are tried
-    /// alongside the fetch; whatever hasn't finished by then carries on, or stays pending for the next try.
+    /// How long a fetch waits for pending ticks to reach the vault, counted from its start. The ticks are written
+    /// before the tasks are read, so the fetch reads the file as they left it; whatever hasn't finished by then
+    /// carries on, or stays pending for the next try.
     static let tickRetryAllowance: TimeInterval = 3
 
     /// A saved snapshot serves another caller only while it is from today, between 0 and `maxAge` seconds old (a
@@ -68,9 +69,12 @@ enum DataLoader {
     /// Whether a fetch that began at `startedAt` may replace the stored snapshot made at `existing`. A widget's fetch
     /// that began before the app's refresh finished carries the older settings (no token yet, say), so it leaves the
     /// app's newer result in place. The app's own refresh (`forced`) always stores: it began after the user's change.
+    /// The stored date keeps whole seconds only (ISO 8601), so one from the second the fetch began may be the newer:
+    /// it's left in place too.
     static func shouldStore(existing: Date?, startedAt: Date, forced: Bool = false) -> Bool {
         guard !forced, let existing else { return true }
-        return existing <= startedAt
+        let startSecond = Date(timeIntervalSince1970: startedAt.timeIntervalSince1970.rounded(.down))
+        return existing < startSecond
     }
 
     /// A failed fetch in the snapshot. A location that was never set isn't one: that wouldn't change by asking again.
@@ -100,14 +104,16 @@ enum DataLoader {
         let settings = store.settings
         let client = GitHubClient(settings: settings, token: store.githubToken)
 
-        // Ticks that couldn't be saved earlier go to the vault alongside the fetch, best effort: they never hold up or
-        // fail the widget, and the ticked tasks are left out below either way.
-        let retry = Task { await TaskSync.retryPending() }
+        // Ticks that couldn't be saved earlier go to the vault first, best effort and for a few seconds at most, so the
+        // tasks are read as they left the file (a list read alongside could put back what an untick's write just
+        // changed). They never fail the widget, and the ticked tasks are left out below either way. The weather
+        // doesn't wait.
         async let weatherResult = fetchWeather(settings: settings)
-        async let tasksResult = fetchTasks(client: client, settings: settings)
+        let t = await afterPendingTicks(store.pendingToggles.contains(where: \.retryHelps), retry: { await TaskSync.retryPending() },
+                                        until: startedAt.addingTimeInterval(tickRetryAllowance)) {
+            await fetchTasks(client: client, settings: settings)
+        }
         let w = await weatherResult
-        let t = await tasksResult
-        await wait(for: retry, until: startedAt.addingTimeInterval(tickRetryAllowance))
 
         let stored = store.daySnapshot
         let snap = daySnapshot(previous: stored, weather: w, tasks: t.tasks, taskError: t.error, settings: settings,
@@ -250,6 +256,16 @@ enum DataLoader {
             }
         }
         return dates.sorted()
+    }
+
+    /// Runs `fetch` once the ticks waiting to be written (`retry`) are done, or at `deadline`, whichever comes first;
+    /// the retry runs on past it. With nothing waiting (`pending` false) the fetch starts at once.
+    static func afterPendingTicks<T>(_ pending: Bool, retry: @escaping @Sendable () async -> Void, until deadline: Date,
+                                     then fetch: () async -> T) async -> T {
+        if pending {
+            await wait(for: Task { await retry() }, until: deadline)
+        }
+        return await fetch()
     }
 
     /// Waits for `task` until `deadline` at the latest, then returns and lets it run on.
