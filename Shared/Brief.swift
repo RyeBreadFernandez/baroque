@@ -46,6 +46,8 @@ enum Brief {
         var line: String
 
         var key: String { TaskToggle.key(text) }
+        /// Its due date (📅), which tells it apart from a task with the same words.
+        var due: Date? { TaskToggle.due(ofLine: line) }
     }
 
     enum Block: Hashable {

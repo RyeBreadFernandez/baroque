@@ -19,26 +19,30 @@ struct ToggleTaskIntent: AppIntent {
     @Parameter(title: "Line number") var lineNumber: Int
     /// The line exactly as it was in the file, when known; nil from a `TaskItem`, which doesn't keep it.
     @Parameter(title: "Line") var line: String?
+    /// The task's due date, if it has one: it tells the task apart from another with the same words when the lines
+    /// have moved since the widget was drawn. Nil in buttons drawn before it was carried.
+    @Parameter(title: "Due") var due: Date?
     /// Ticked (true) or unticked.
     @Parameter(title: "Done") var done: Bool
 
     init() {}
 
-    init(path: String, text: String, lineNumber: Int, line: String? = nil, done: Bool = true) {
+    init(path: String, text: String, lineNumber: Int, line: String? = nil, due: Date? = nil, done: Bool = true) {
         self.path = path
         self.text = text
         self.lineNumber = lineNumber
         self.line = line
+        self.due = due
         self.done = done
     }
 
     /// A tick for a task the widget lists (they're all open, so the default is to tick it).
     init(_ task: TaskItem, done: Bool = true) {
-        self.init(path: task.sourcePath, text: task.text, lineNumber: task.lineNumber, done: done)
+        self.init(path: task.sourcePath, text: task.text, lineNumber: task.lineNumber, due: task.due, done: done)
     }
 
     func perform() async throws -> some IntentResult {
-        await TaskSync.toggle(PendingToggle(path: path, line: line, text: text, lineNumber: lineNumber, done: done))
+        await TaskSync.toggle(PendingToggle(path: path, line: line, text: text, lineNumber: lineNumber, due: due, done: done))
         return .result()
     }
 }

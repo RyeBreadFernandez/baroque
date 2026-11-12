@@ -230,6 +230,98 @@ final class TaskSyncTests: XCTestCase {
         XCTAssertEqual(kept.last?.key, "New 2")
     }
 
+    // MARK: Tasks worded alike, outside the brief
+
+    private let inbox = "Tasks/Inbox.md"
+
+    private func useInbox(_ md: String) -> [TaskItem] {
+        let tasks = TaskParser.parse(markdown: md, sourcePath: inbox)
+        store.daySnapshot = DaySnapshot(date: Date(), weather: nil, tasks: tasks, taskError: nil, weatherError: nil)
+        return tasks
+    }
+
+    func testOneTapTicksOneOfTwoTasksWordedAlike() async {
+        let md = "# Inbox\n- [ ] Call the dentist 📅 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20\n"
+        let tasks = useInbox(md)
+        let tap = PendingToggle(tasks[0], tappedAt: nine)       // from the widget: no line, but its due date
+        TaskSync.record(tap, store: store)
+        XCTAssertEqual(snapshotTexts, ["Call the dentist"], "one task left on the widget")
+        XCTAssertEqual(store.daySnapshot?.tasks.first?.due, TaskParser.parseDate("2026-11-20"))
+        XCTAssertEqual(TaskSync.visible(TaskParser.parse(markdown: md, sourcePath: inbox), store: store).map(\.lineNumber), [3])
+
+        StubGitHub.replies = [.file(md, sha: "s1"), .committed]
+        await TaskSync.retryPending(store: store, client: StubGitHub.client())
+        XCTAssertEqual(StubGitHub.seen.last?.writtenText,
+                       "# Inbox\n- [x] Call the dentist 📅 2026-11-11 ✅ 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20\n")
+        XCTAssertEqual(store.daySnapshot?.tasks.map(\.lineNumber), [3], "the other one stays")
+        XCTAssertTrue(store.doneTasks.isEmpty, "not remembered outside the brief")
+        // Read again, the other one is still open.
+        let after = TaskParser.parse(markdown: StubGitHub.seen.last?.writtenText ?? "", sourcePath: inbox)
+        XCTAssertEqual(TaskSync.visible(after, store: store).map(\.lineNumber), [3])
+    }
+
+    func testTwoTapsOnTasksWordedAlikeAreTwoTicks() {
+        let tasks = useInbox("- [ ] Water the ferns\n- [ ] Water the ferns\n")
+        TaskSync.record(PendingToggle(tasks[0], tappedAt: nine), store: store)
+        TaskSync.record(PendingToggle(tasks[1], tappedAt: nine), store: store)
+        XCTAssertEqual(store.pendingToggles.map(\.lineNumber), [1, 2], "the second tap doesn't replace the first")
+        XCTAssertTrue(snapshotTexts.isEmpty)
+    }
+
+    func testAfterALineAboveIsDeletedAWidgetTapTicksTheRightDate() async {
+        let before = "- [ ] Feed the cat\n- [ ] Call the dentist 📅 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20"
+        let tap = PendingToggle(useInbox(before)[1], tappedAt: nine)    // the 11th, drawn at line 2
+        // Line 1 was deleted in Obsidian since: line 2 is now the 20th.
+        let now = "- [ ] Call the dentist 📅 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20"
+        StubGitHub.replies = [.file(now, sha: "s1"), .committed]
+        let outcome = await TaskSync.toggle(tap, store: store, client: StubGitHub.client())
+        XCTAssertEqual(outcome, .saved)
+        XCTAssertEqual(StubGitHub.seen.last?.writtenText,
+                       "- [x] Call the dentist 📅 2026-11-11 ✅ 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20")
+    }
+
+    func testTasksThatCantBeToldApartAreNotGuessed() async {
+        let tap = PendingToggle(path: inbox, text: "Call the dentist", lineNumber: 9, due: TaskParser.parseDate("2026-11-11"), done: true, tappedAt: nine)
+        let md = "- [ ] Call the dentist 📅 2026-11-11\n- [ ] Call the dentist 📅 2026-11-11"
+        StubGitHub.replies = [.file(md, sha: "s1")]
+        let outcome = await TaskSync.toggle(tap, store: store, client: StubGitHub.client())
+        XCTAssertEqual(outcome, .failed(TaskSync.changedMessage))
+        XCTAssertEqual(StubGitHub.seen.map(\.method), ["GET"], "nothing written")
+    }
+
+    func testNextMonthsTaskOutsideTheBriefIsNotTickedAgain() async {
+        let bills = "Tasks/Bills.md"
+        let november = "- [ ] Pay rent 📅 2026-11-01"
+        let task = TaskParser.parse(markdown: november, sourcePath: bills)[0]
+        StubGitHub.replies = [.file(november, sha: "s1"), .committed]
+        let outcome = await TaskSync.toggle(PendingToggle(task, tappedAt: nine), store: store, client: StubGitHub.client())
+        XCTAssertEqual(outcome, .saved)
+        XCTAssertTrue(store.doneTasks.isEmpty, "only the Daily Brief's ticks are remembered")
+
+        // A month on, the file lists December's.
+        let december = TaskParser.parse(markdown: "- [x] Pay rent 📅 2026-11-01 ✅ 2026-11-11\n- [ ] Pay rent 📅 2026-12-01", sourcePath: bills)
+        XCTAssertEqual(TaskSync.visible(december, store: store).map(\.text), ["Pay rent"])
+        // Even with a tick remembered there by an earlier version.
+        store.doneTasks = [DoneTask(path: bills, key: "Pay rent", day: "2026-11-11")]
+        XCTAssertEqual(TaskSync.visible(december, store: store).map(\.text), ["Pay rent"])
+        XCTAssertTrue(store.pendingToggles.isEmpty, "nothing queued")
+        let line = Brief.TaskLine(text: "Pay rent", done: false, lineNumber: 2, line: "- [ ] Pay rent 📅 2026-12-01")
+        XCTAssertEqual(TaskSync.shown(line, path: bills, pending: [], done: store.doneTasks).done, false)
+    }
+
+    func testOnlyTheBriefsTicksAreRemembered() {
+        TaskSync.record(tick(), store: store)
+        TaskSync.record(PendingToggle(path: inbox, text: "Feed the cat", lineNumber: 1, done: true, tappedAt: nine), store: store)
+        XCTAssertEqual(store.doneTasks, [DoneTask(path: path, key: "Water the ferns", day: "2026-11-11")])
+    }
+
+    func testARelistedBriefTaskWithADueDateIsQueuedWithIt() {
+        store.doneTasks = [DoneTask(path: path, key: "Water the ferns", day: "2026-11-10")]
+        let listed = TaskParser.parse(markdown: "## Needs attention\n- [ ] #todo Water the ferns 📅 2026-11-12", sourcePath: path)
+        XCTAssertTrue(TaskSync.visible(listed, store: store).isEmpty)
+        XCTAssertEqual(store.pendingToggles.first?.due, TaskParser.parseDate("2026-11-12"))
+    }
+
     // MARK: Stored ticks
 
     func testStoredTicksDecodeOneByOne() {

@@ -18,12 +18,12 @@ struct BriefView: View {
     private let path = Brief.path(settings: Store.shared.settings)
 
     // Ticks: what's waiting to be written, what's remembered, which taps on this page are being written now, and
-    // the problems of taps that are no longer waiting (the task changed in the vault).
+    // the problems of taps that are no longer waiting (the task changed in the vault); a task by its line number.
     @State private var pending = Store.shared.pendingToggles
     @State private var remembered = Store.shared.doneTasks
-    @State private var saving: Set<String> = []
+    @State private var saving: Set<Int> = []
     @State private var retrying = false
-    @State private var problems: [String: String] = [:]
+    @State private var problems: [Int: String] = [:]
 
     var body: some View {
         NavigationStack {
@@ -67,6 +67,12 @@ struct BriefView: View {
 
     @ViewBuilder
     private func content(_ note: (blocks: [Brief.Block], generated: String?), fetchedAt: Date) -> some View {
+        // Each waiting tap belongs to one task, so two tasks worded alike are ticked one at a time.
+        let tasks = note.blocks.compactMap { block -> Brief.TaskLine? in
+            if case .task(let task) = block { return task }
+            return nil
+        }
+        let ticks = TaskSync.shown(tasks, path: path, pending: pending, done: remembered)
         ForEach(Array(note.blocks.enumerated()), id: \.offset) { _, block in
             switch block {
             case .title(let text):
@@ -81,7 +87,7 @@ struct BriefView: View {
                     .padding(.top, 22).padding(.bottom, 8)
                 Rectangle().fill(Stone.gold.opacity(0.3)).frame(height: 0.7).padding(.bottom, 10)
             case .task(let task):
-                taskRow(task)
+                taskRow(task, shown: ticks[task.lineNumber] ?? (task.done, nil))
             case .bullet(let text):
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Circle().fill(Stone.gold).frame(width: 4, height: 4).alignmentGuide(.firstTextBaseline) { $0[.bottom] + 4 }
@@ -97,8 +103,7 @@ struct BriefView: View {
     }
 
     /// A task: its ring is the tick button, and a line under it says while it's saving or why it isn't saved.
-    private func taskRow(_ task: Brief.TaskLine) -> some View {
-        let shown = TaskSync.shown(task, path: path, pending: pending, done: remembered)
+    private func taskRow(_ task: Brief.TaskLine, shown: (done: Bool, pending: PendingToggle?)) -> some View {
         let note = self.note(for: task, waiting: shown.pending)
         return HStack(alignment: .firstTextBaseline, spacing: 0) {
             Button { tap(task, done: !shown.done) } label: {
@@ -125,25 +130,25 @@ struct BriefView: View {
 
     /// "Saving…" while a tap is being written; then nothing, or why it isn't written yet.
     private func note(for task: Brief.TaskLine, waiting: PendingToggle?) -> (text: String, problem: Bool)? {
-        if saving.contains(task.key) { return ("Saving…", false) }
+        if saving.contains(task.lineNumber) { return ("Saving…", false) }
         if let waiting {
             if let error = waiting.error { return waiting.retryHelps ? (TaskSync.retryMessage, true) : (error, true) }
             return retrying ? ("Saving…", false) : (TaskSync.retryMessage, true)
         }
-        return problems[task.key].map { ($0, true) }
+        return problems[task.lineNumber].map { ($0, true) }
     }
 
     private func tap(_ task: Brief.TaskLine, done: Bool) {
-        let request = PendingToggle(path: path, line: task.line, text: task.text, lineNumber: task.lineNumber, done: done)
-        problems[task.key] = nil
-        saving.insert(task.key)
+        let request = PendingToggle(path: path, line: task.line, text: task.text, lineNumber: task.lineNumber, due: task.due, done: done)
+        problems[task.lineNumber] = nil
+        saving.insert(task.lineNumber)
         TaskSync.record(request)
         refreshTicks()
         Task {
             let outcome = await TaskSync.write(request)
-            saving.remove(task.key)
+            saving.remove(task.lineNumber)
             if case .failed(let reason) = outcome, !Store.shared.pendingToggles.contains(where: { $0.isSameTap(as: request) }) {
-                problems[task.key] = reason   // not waiting any more: the task changed in the vault
+                problems[task.lineNumber] = reason   // not waiting any more: the task changed in the vault
             }
             refreshTicks()
         }

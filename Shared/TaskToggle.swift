@@ -36,14 +36,29 @@ enum TaskToggle {
         text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
     }
 
-    /// The text TaskParser would show for a checkbox line in any state (nil if it isn't a task or has no text).
-    static func text(ofLine line: String) -> String? {
+    /// The task TaskParser would list for a checkbox line in any state (nil if it isn't a task or has no text).
+    static func task(ofLine line: String) -> TaskItem? {
         guard var box = checkbox(line) else { return nil }
         box.status = " "
-        return TaskParser.parse(markdown: box.line, sourcePath: "").first?.text
+        return TaskParser.parse(markdown: box.line, sourcePath: "").first
     }
 
+    /// The text TaskParser would show for a checkbox line in any state (nil if it isn't a task or has no text).
+    static func text(ofLine line: String) -> String? { task(ofLine: line)?.text }
+
     static func key(ofLine line: String) -> String? { text(ofLine: line).map(key) }
+
+    /// A checkbox line's due date (📅), in any state.
+    static func due(ofLine line: String) -> Date? { task(ofLine: line)?.due }
+
+    /// The same due date, or both none. Days, not instants, so a date read again later still matches.
+    static func sameDue(_ a: Date?, _ b: Date?) -> Bool {
+        switch (a, b) {
+        case (nil, nil): return true
+        case let (a?, b?): return Calendar.current.isDate(a, inSameDayAs: b)
+        default: return false
+        }
+    }
 
     // MARK: One line
 
@@ -99,10 +114,12 @@ enum TaskToggle {
     }
 
     /// The same, finding the task by its key (`key(_:)`) rather than its exact line: for ticks made on the widget, and
-    /// ticks made again when the morning brief lists a ticked task anew. A line already in the wanted state counts as
-    /// done (the markdown comes back unchanged) when no other line with that key needs changing.
-    static func apply(to markdown: String, key wanted: String, near lineNumber: Int, done: Bool, today: Date) -> String? {
-        change(in: markdown, key: wanted, near: lineNumber, done: done, today: today)?.markdown
+    /// ticks made again when the morning brief lists a ticked task anew. When several lines have that key, only
+    /// those due on `due` (or, for nil, with no due date) are the task; if that still leaves more than one and none is
+    /// at `lineNumber`, it's nil rather than a guess. A line already in the wanted state counts as done (the markdown
+    /// comes back unchanged) when no other line of the task needs changing.
+    static func apply(to markdown: String, key wanted: String, near lineNumber: Int, done: Bool, today: Date, due: Date? = nil) -> String? {
+        change(in: markdown, key: wanted, near: lineNumber, done: done, today: today, due: due)?.markdown
     }
 
     /// What `apply` did: the file after it, and the task's line (1-based) as it reads now.
@@ -117,21 +134,26 @@ enum TaskToggle {
         return change(markdown, near: lineNumber, done: done, today: today) { _, line in line == wanted }
     }
 
-    static func change(in markdown: String, key wanted: String, near lineNumber: Int, done: Bool, today: Date) -> Change? {
-        change(markdown, near: lineNumber, done: done, today: today) { box, line in
+    static func change(in markdown: String, key wanted: String, near lineNumber: Int, done: Bool, today: Date, due: Date? = nil) -> Change? {
+        change(markdown, near: lineNumber, done: done, today: today, tellApart: { sameDue(TaskToggle.due(ofLine: $0), due) }) { box, line in
             (box.isOpen || box.isDone) && key(ofLine: line) == wanted
         }
     }
 
     /// Finds the line among the file's visible lines (not in front matter, code blocks or comments) and changes it.
+    /// When several lines match, `tellApart` keeps the ones that are the task (none left: nil).
     private static func change(_ markdown: String, near lineNumber: Int, done: Bool, today: Date,
-                               matches: (Checkbox, String) -> Bool) -> Change? {
+                               tellApart: ((String) -> Bool)? = nil, matches: (Checkbox, String) -> Bool) -> Change? {
         var file = Lines(markdown)
         let visible = Set(MarkdownText.visibleLines(of: markdown).map(\.number))
         var hits: [Int] = []           // 0-based indexes of the lines that match
         for i in file.lines.indices where visible.contains(i + 1) {
             let line = file.text(at: i)
             if let box = checkbox(line), matches(box, line) { hits.append(i) }
+        }
+        if hits.count > 1, let tellApart {
+            hits = hits.filter { tellApart(file.text(at: $0)) }
+            if hits.isEmpty { return nil }
         }
         // Lines already in the wanted state don't compete: the one at `lineNumber` that still needs the change, else
         // the only one that does. If every match is already ticked (or unticked), there's nothing to do.

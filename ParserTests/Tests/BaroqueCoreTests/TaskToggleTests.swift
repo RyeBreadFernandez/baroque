@@ -136,6 +136,21 @@ final class TaskToggleTests: XCTestCase {
         XCTAssertNil(TaskToggle.apply(to: md, key: "Feed the cat", near: 1, done: true, today: today))
     }
 
+    func testByKeyTellsTasksWordedAlikeApartByTheirDueDate() {
+        let md = "- [ ] Call the dentist 📅 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20"
+        let twentieth = TaskToggle.change(in: md, key: "Call the dentist", near: 1, done: true, today: today, due: TaskParser.parseDate("2026-11-20"))
+        XCTAssertEqual(twentieth?.lineNumber, 2, "the due date wins over a line number that moved")
+        // The eleventh is already ticked: done, and the twentieth isn't touched.
+        let ticked = "- [x] Call the dentist 📅 2026-11-11 ✅ 2026-11-11\n- [ ] Call the dentist 📅 2026-11-20"
+        XCTAssertEqual(TaskToggle.apply(to: ticked, key: "Call the dentist", near: 1, done: true, today: today, due: TaskParser.parseDate("2026-11-11")), ticked)
+        // No line due that day, or no due date given: which one is meant isn't known.
+        XCTAssertNil(TaskToggle.apply(to: md, key: "Call the dentist", near: 5, done: true, today: today, due: TaskParser.parseDate("2026-11-15")))
+        XCTAssertNil(TaskToggle.apply(to: md, key: "Call the dentist", near: 5, done: true, today: today))
+        // One line with the words: it's the task, whatever its date now.
+        XCTAssertNotNil(TaskToggle.apply(to: "- [ ] Call the dentist 📅 2026-11-12", key: "Call the dentist", near: 1, done: true, today: today,
+                                         due: TaskParser.parseDate("2026-11-11")))
+    }
+
     func testByKeyPrefersTheCopyThatStillNeedsIt() {
         // Ticked yesterday at line 1, listed again by the morning brief at line 3.
         let md = "- [x] Water the ferns ✅ 2026-11-10\n\n- [ ] Water the ferns"
