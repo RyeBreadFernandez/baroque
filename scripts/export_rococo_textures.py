@@ -62,18 +62,20 @@ IMAGES = {
 # The user's repainted photographs that take turns (2026-11-08: "have it so the image on the main screen rotates over
 # time with some of the other images I have taken"), each cut for the large Day widget and for the small Photograph
 # widget: (left, top, width) as fractions, the height following from the frame. The large cuts keep the left side and
-# the top darkest, where the quote and the temperature sit.
+# the top darkest, where the quote and the temperature sit. Bryce, the arch and Zion Canyon were repainted from the
+# full photographs on 2026-11-11 (they had come from phone-wallpaper crops, so the widget cut them twice): the whole
+# square for the two squares, and the whole arch across a 3:2 frame.
 PHOTOS = {
     "kings-canyon": ((0.03, 0.0, 0.953), (0.0, 0.0, 1.0)),
     "valley": ((0.02, 0.0, 0.953), (0.0, 0.0, 1.0)),
     "river": ((0.0, 0.0, 0.953), (0.0, 0.0, 1.0)),
     "dead-tree": ((0.03, 0.0, 0.953), (0.0, 0.0, 1.0)),
     "falls": ((0.04, 0.0, 0.953), (0.0, 0.0, 1.0)),
-    "bryce": ((0.0, 0.24, 1.0), (0.0, 0.06, 1.0)),
-    "arch": ((0.0, 0.28, 1.0), (0.0, 0.32, 1.0)),
+    "bryce": ((0.03, 0.0, 0.953), (0.0, 0.0, 1.0)),
+    "arch": ((0.22, 0.0, 0.635), (0.25, 0.0, 0.666)),
     "zion": ((0.0, 0.36, 1.0), (0.0, 0.4, 1.0)),
     "sunset": ((0.0, 0.33, 1.0), (0.0, 0.38, 1.0)),
-    "zion-canyon": ((0.3, 0.0, 0.436), (0.28, 0.0, 0.457)),
+    "zion-canyon": ((0.03, 0.0, 0.953), (0.0, 0.0, 1.0)),
 }
 for _name, (_large, _small) in PHOTOS.items():
     IMAGES[f"RococoPhoto-{_name}"] = (f"photos/{_name}.jpg", (696, 730), _large)

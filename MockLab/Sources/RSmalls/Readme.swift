@@ -78,7 +78,9 @@ enum ReadmeRenders {
     @MainActor static func renderHeroChecks(to dir: URL) {
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let first = RococoPhotos.nextChange(after: Mock.now)
-        for k in 0..<(RococoPhotos.underWords.count * 2) {
+        // Four rounds: a photograph comes back every six turns (18 hours), so four rounds show each one at four times of
+        // day, two of them in daylight (two rounds could both fall at night).
+        for k in 0..<(RococoPhotos.underWords.count * 4) {
             var day = Mock.day
             day.date = first.addingTimeInterval(Double(k * RococoPhotos.hours) * 3600 + 5400)
             let hour = Calendar.current.component(.hour, from: day.date)
