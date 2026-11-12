@@ -15,7 +15,6 @@ struct RococoQuoteView: View {
     var error: String?
     /// Wraps the quote (the widget passes its next-quote button; the app's preview leaves it as it is).
     var tap: (AnyView) -> AnyView = { $0 }
-    @Environment(\.widgetRenderingMode) private var mode
 
     var body: some View {
         RococoFrame(size: size) {
@@ -47,11 +46,10 @@ struct RococoQuoteView: View {
     }
 
     private var ground: some View {
-        Group {
-            // On tinted and clear home screens iOS would draw the shade in the words' own tint.
-            if mode == .accented {
-                EmptyView()
-            } else if size == .medium {
+        // On tinted and clear home screens iOS would draw the shade in the words' own tint. RococoScrim leaves it out
+        // there: it reads `rococoAccented` inside RococoFrame, which sets it from the rendering mode.
+        RococoScrim {
+            if size == .medium {
                 LinearGradient(colors: [.clear, RococoInk.umber.opacity(min(0.92, 0.72 * RococoTheme.current.scrim))], startPoint: UnitPoint(x: 0.4, y: 0.5),
                                endPoint: .trailing)
             } else {
@@ -128,12 +126,13 @@ struct RococoWordsGround: ViewModifier {
     var night: Bool
     /// How far the ground runs past the words before it fades (over as far again).
     var spread: CGFloat = 20
-    @Environment(\.widgetRenderingMode) private var mode
+    /// Set by RococoFrame: the words this grounds are drawn inside one.
+    @Environment(\.rococoAccented) private var accented
 
     func body(content: Content) -> some View {
         content.background {
             // On tinted and clear home screens iOS would draw the ground in the words' own tint.
-            if !night && mode != .accented {
+            if !night && !accented {
                 RoundedRectangle(cornerRadius: spread, style: .continuous)
                     .fill(RococoInk.umber.opacity(min(0.9, strength * RococoTheme.current.scrim)))
                     .padding(-spread)
