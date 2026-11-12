@@ -15,6 +15,7 @@
 		1FD5EF5EB3C76492B2469517 /* WeatherClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D1E098ADA6043F3754244F /* WeatherClient.swift */; };
 		208A171B67048E9D503D49DC /* RococoDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5E16ACD7FF1827D79236DF /* RococoDay.swift */; };
 		2B5DFA978824225B3E219D09 /* PaintTextures.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ACC5636EE48B331AEE0BEF84 /* PaintTextures.xcassets */; };
+		32EC69E58DA164208EC1DC2B /* BandImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9570E1728E4250CCAC681343 /* BandImage.swift */; };
 		3803F770BA96808DD4A85DB1 /* BriefView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB9FD1C9E49B030C81FA54D /* BriefView.swift */; };
 		3A7CF855CFD540B5760B4C93 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61465B04056954658948D58 /* TaskSync.swift */; };
 		3BEA1E5AA80B49752FFBA58B /* Sky.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150B35513880CDCEA93DB2A3 /* Sky.swift */; };
@@ -29,6 +30,7 @@
 		5D37189C906FA664C2C9449B /* RococoBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713E634C6C4D7CDD0CB8827B /* RococoBattery.swift */; };
 		64B6D9178F18DBF0772DF4B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A50D43107EEF9AAE61832DC /* Assets.xcassets */; };
 		747CC5731BA56E71C799EF45 /* GitHubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A8C7F107F3A39B0572A6382 /* GitHubClient.swift */; };
+		753EA782FC46E6200F991710 /* BandImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9570E1728E4250CCAC681343 /* BandImage.swift */; };
 		78B34A961ED2DE085D8E639E /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB59A043CEBF2BE6177EF6FD /* Store.swift */; };
 		79E776D3856B3AE6A2E8D00A /* WeatherClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8D1E098ADA6043F3754244F /* WeatherClient.swift */; };
 		82105EE67D238C0013145096 /* PaintTextures.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ACC5636EE48B331AEE0BEF84 /* PaintTextures.xcassets */; };
@@ -39,6 +41,7 @@
 		9B0DC41B093C96831781DC67 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E10DB9A4E60F7F02EF02277 /* Models.swift */; };
 		9D977E0EE2FD04C631AA11B1 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61465B04056954658948D58 /* TaskSync.swift */; };
 		A2C19D3DB23644B465374135 /* RococoBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713E634C6C4D7CDD0CB8827B /* RococoBattery.swift */; };
+		A77A2A295EF8F300B6EF484C /* BriefPicture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67C0FAE01AE820878E96DB6 /* BriefPicture.swift */; };
 		A89F9689089E3DFC1344E655 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E9A74CD61BAE08B8285C770 /* DemoData.swift */; };
 		AB1FFD1162B91449A81E5BBA /* Sky.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150B35513880CDCEA93DB2A3 /* Sky.swift */; };
 		AB938A9E203F4F9EE407B83A /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E9A74CD61BAE08B8285C770 /* DemoData.swift */; };
@@ -58,6 +61,7 @@
 		D779F660E5C2AB3423A2D420 /* Landscape.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645685896793B6F5C40D776B /* Landscape.swift */; };
 		DB75D0A726C71A26C82E08D9 /* RococoQuote.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19FEFCBE1CD301D6098155CB /* RococoQuote.swift */; };
 		DC7AD21571FF6643D1E58CFA /* RococoStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE63D9C3CB43B5FB71EA278 /* RococoStyle.swift */; };
+		EAB2B7FB3E68CC7CB5128ECF /* BriefPicture.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67C0FAE01AE820878E96DB6 /* BriefPicture.swift */; };
 		EB25C09E0DFABCB729B54F03 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E10DB9A4E60F7F02EF02277 /* Models.swift */; };
 		F0D4AC6FF93F8C1C0055B6E7 /* Shots.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC8DD694230AC02C95B3DD0F /* Shots.swift */; };
 		FD7D03A9441B190319973383 /* DebugLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49055F7A89F73FFE8DD65125 /* DebugLaunch.swift */; };
@@ -121,6 +125,7 @@
 		8962AFA0F2D13CD244098EFD /* LocationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationHelper.swift; sourceTree = "<group>"; };
 		91822B9745AC0C7C693740A9 /* Baroque.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Baroque.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9220822F72B4AF1E39BD74B4 /* BaroqueWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BaroqueWidget.entitlements; sourceTree = "<group>"; };
+		9570E1728E4250CCAC681343 /* BandImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BandImage.swift; sourceTree = "<group>"; };
 		95730688EA589D9474945F92 /* Words.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Words.swift; sourceTree = "<group>"; };
 		9A50D43107EEF9AAE61832DC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A097231CD639C340AE1A6BA2 /* DataLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataLoader.swift; sourceTree = "<group>"; };
@@ -137,6 +142,7 @@
 		CCA1E22AC8165E2D9077DDFF /* Brief.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Brief.swift; sourceTree = "<group>"; };
 		D61465B04056954658948D58 /* TaskSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSync.swift; sourceTree = "<group>"; };
 		E1A5BA03557D6204E0B162DB /* BaroqueWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaroqueWidgets.swift; sourceTree = "<group>"; };
+		E67C0FAE01AE820878E96DB6 /* BriefPicture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefPicture.swift; sourceTree = "<group>"; };
 		ECB9FD1C9E49B030C81FA54D /* BriefView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefView.swift; sourceTree = "<group>"; };
 		EF359B136741E283BAA61D2E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		FCAF414566177BFFB527FDC1 /* HomeSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSetup.swift; sourceTree = "<group>"; };
@@ -209,7 +215,9 @@
 		EBC4AF233494427D2C559347 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				9570E1728E4250CCAC681343 /* BandImage.swift */,
 				CCA1E22AC8165E2D9077DDFF /* Brief.swift */,
+				E67C0FAE01AE820878E96DB6 /* BriefPicture.swift */,
 				A097231CD639C340AE1A6BA2 /* DataLoader.swift */,
 				7E9A74CD61BAE08B8285C770 /* DemoData.swift */,
 				6A8C7F107F3A39B0572A6382 /* GitHubClient.swift */,
@@ -379,8 +387,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				32EC69E58DA164208EC1DC2B /* BandImage.swift in Sources */,
 				ABF4F1D582CAB2446F91C412 /* BaroqueApp.swift in Sources */,
 				B8C5E6D52EAF3D04201DAAE5 /* Brief.swift in Sources */,
+				EAB2B7FB3E68CC7CB5128ECF /* BriefPicture.swift in Sources */,
 				3803F770BA96808DD4A85DB1 /* BriefView.swift in Sources */,
 				962C953E34C795793F78C772 /* ContentView.swift in Sources */,
 				C580B2C41A4F5899FDA31E5B /* DataLoader.swift in Sources */,
@@ -413,8 +423,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				753EA782FC46E6200F991710 /* BandImage.swift in Sources */,
 				8CEBE79E6E15E502B8FA81F2 /* BaroqueWidgets.swift in Sources */,
 				8F99A67A1E144B448C255DED /* Brief.swift in Sources */,
+				A77A2A295EF8F300B6EF484C /* BriefPicture.swift in Sources */,
 				B6080B6DA32076E4C51B3DC5 /* DataLoader.swift in Sources */,
 				AB938A9E203F4F9EE407B83A /* DemoData.swift in Sources */,
 				AEBC0FA5B84BFDC047FB47EB /* GitHubClient.swift in Sources */,

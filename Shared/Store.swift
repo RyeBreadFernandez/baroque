@@ -28,6 +28,8 @@ final class Store {
         static let brief = "baroque.brief"
         static let pendingToggles = "baroque.pendingToggles"
         static let doneTasks = "baroque.doneTasks"
+        static let briefPicture = "baroque.briefPicture"
+        static let briefPictureFailure = "baroque.briefPictureFailure"
     }
 
     /// `Store.shared` everywhere; tests make their own on a throwaway suite.
@@ -77,6 +79,19 @@ final class Store {
     var brief: BriefSnapshot? {
         get { load(Key.brief) }
         set { save(newValue, Key.brief) }
+    }
+
+    /// The Daily Brief's picture of the day on file (BriefPicture): where it came from, what it shows, and when the
+    /// brief last named it. Nil: the large Today shows the still life.
+    var briefPicture: BriefPicture.Kept? {
+        get { load(Key.briefPicture) }
+        set { save(newValue, Key.briefPicture) }
+    }
+
+    /// The last picture that couldn't be fetched, so it waits before it's tried again.
+    var briefPictureFailure: BriefPicture.Attempt? {
+        get { load(Key.briefPictureFailure) }
+        set { save(newValue, Key.briefPictureFailure) }
     }
 
     var quoteOffset: Int {
@@ -210,9 +225,10 @@ final class Store {
     // Back to a fresh-install state: default settings, no caches, no ticks, no token.
     func resetAll() {
         for key in [Key.settings, Key.daySnapshot, Key.quoteSnapshot, Key.quoteOffset, Key.brief, Key.movedToDailyBrief,
-                    Key.pendingToggles, Key.doneTasks] {
+                    Key.pendingToggles, Key.doneTasks, Key.briefPicture, Key.briefPictureFailure] {
             defaults.removeObject(forKey: key)
         }
+        if let folder = BriefPicture.folder { try? FileManager.default.removeItem(at: folder) }
         githubToken = ""
     }
     #endif

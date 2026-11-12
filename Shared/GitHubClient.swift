@@ -76,6 +76,21 @@ struct GitHubClient {
         throw readError(http.statusCode, data: data, path: cleaned)
     }
 
+    /// A file's bytes in the raw form, as `fetchText` reads, saved to a temporary file that the caller removes: a
+    /// picture in the vault, which needn't be held in memory whole.
+    func download(path: String) async throws -> URL {
+        let cleaned = try clean(path)
+        let req = request(try url(cleaned, withRef: true), accept: "application/vnd.github.raw+json")
+        let (file, response) = try await session.download(for: req)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            let body = (try? Data(contentsOf: file)) ?? Data()
+            try? FileManager.default.removeItem(at: file)
+            guard let http = response as? HTTPURLResponse else { throw GitHubError.badURL }
+            throw readError(http.statusCode, data: body, path: cleaned)
+        }
+        return file
+    }
+
     /// A file's text and its blob `sha`, which a write must name (the JSON form of the Contents API).
     func fetchFile(path: String) async throws -> (text: String, sha: String) {
         let cleaned = try clean(path)
