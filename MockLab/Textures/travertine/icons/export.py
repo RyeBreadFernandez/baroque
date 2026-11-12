@@ -2,7 +2,8 @@
 """Copies the user's app icons out of the Blender renders as opaque 1024 px PNGs named by app, ready for the Shortcuts
 app's "Add to Home Screen" (it wants a square image; iOS rounds the corners itself). The transparent corners are filled
 from the stone around them. Run after build.py:  python3 MockLab/Textures/travertine/icons/export.py [travertine|rococo]
-(writes to screenshots/<set>/icons-for-shortcuts/)."""
+(writes to screenshots/<set>/icons-for-shortcuts/). Needs OpenCV and numpy: pip3 install opencv-python numpy.
+scripts/export_rococo_textures.py loads this file for its APPS list, so it needs them too."""
 import os
 import sys
 

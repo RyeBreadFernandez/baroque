@@ -3,15 +3,15 @@
 its frame at 2 px per point (JPEG, so the app stays small):
 
   RococoLimestone  480x480   the painted limestone the stone widgets are laid on (rococo/travertine.jpg)
-  RococoHero       696x730   the large Day widget: the user's Kings Canyon, repainted (rococo/photos/kings-canyon.jpg)
   RococoTall       696x730   the large Quote widget: the sunset on the beach (rococo/photos/sunset.jpg)
   RococoWide       696x328   the medium Quote widget: the dead tree (rococo/photos/dead-tree.jpg)
   RococoSquare     328x328   the small Quote widget: the river under the pines (rococo/photos/river.jpg)
   RococoFlowers    304x296   the Today widget's panel: the still life's roses (rococo/flowers.jpg)
   RococoStillLife  328x328   the Still Life widget, small: the whole bouquet in its glass, nothing on it
   RococoStillLifeLarge 696x730  the same, large
-  RococoPhoto-<name>        696x730   the user's repainted photographs that take turns on the large Day widget
-  RococoPhoto-<name>-small  328x328   the same, for the Photograph widget (Shared/RococoStyle.swift, RococoPhotos)
+  RococoPhoto-<name>        696x730   the user's repainted photographs (PHOTOS below, rococo/photos/<name>.jpg), which
+                                      take turns on the large Day widget, a new one every three hours
+  RococoPhoto-<name>-small  328x328   the same, for the Photograph widget (RococoPhotos in Shared/RococoStyle.swift)
 
 WidgetKit refuses a widget whose images add up to too many pixels; every widget here stays under one large image
 (696x730), well within it. The sources are painted by MockLab/Textures/rococo/make.py and photos.py.
@@ -22,7 +22,8 @@ It also fills the app's own catalog (Baroque/Assets.xcassets) from the Blender r
   HomeIcons/Icon*  the user's 24 home screen icons, 512 px and opaque, which the app saves to Photos for Shortcuts
   Wallpaper        The Bathing Pool cut to the screen (rococo/wallpaper.jpg), which the app saves to Photos
 
-Run: python3 scripts/export_rococo_textures.py   (deterministic, offline)
+Run: python3 scripts/export_rococo_textures.py   (deterministic, offline; needs OpenCV, numpy and Pillow:
+     pip3 install opencv-python numpy Pillow)
 """
 import importlib.util
 import json
@@ -30,9 +31,12 @@ import os
 import sys
 
 sys.dont_write_bytecode = True
-import cv2
-import numpy as np
-from PIL import Image
+try:
+    import cv2
+    import numpy as np
+    from PIL import Image
+except ImportError as e:
+    sys.exit(f"{e.name or e} is missing: pip3 install opencv-python numpy Pillow")
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SRC = os.path.join(ROOT, "MockLab", "Textures", "rococo")

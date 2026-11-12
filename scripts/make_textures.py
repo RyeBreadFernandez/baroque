@@ -16,7 +16,7 @@ Widget textures are kept near 1 pixel per point: WidgetKit refuses to archive wi
 too large. Needs numpy, scipy, Pillow:
     python3 scripts/make_textures.py
 """
-import json, os, shutil
+import json, os
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy.ndimage import gaussian_filter, map_coordinates, sobel
@@ -246,15 +246,6 @@ def write(catalog, name, img):
 
 
 def main():
-    # The stone textures this replaced.
-    old = os.path.join(ROOT, "Shared", "StoneTextures.xcassets")
-    if os.path.isdir(old):
-        shutil.rmtree(old)
-    for name in ("AppTravertine", "AppWalnut"):
-        path = os.path.join(APP, name + ".imageset")
-        if os.path.isdir(path):
-            shutil.rmtree(path)
-
     os.makedirs(SHARED, exist_ok=True)
     with open(os.path.join(SHARED, "Contents.json"), "w") as f:
         json.dump({"info": {"author": "xcode", "version": 1}}, f, indent=2)
