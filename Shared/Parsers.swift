@@ -383,7 +383,7 @@ enum QuoteParser {
         return (s, nil)
     }
 
-    /// `"Stay hungry." — Steve Jobs` / `Stay hungry. — Steve Jobs` on a blockquote's last line.
+    /// `"Well done is better than well said." — Benjamin Franklin` / `Well done. — Benjamin Franklin` on a blockquote's last line.
     /// Only em/en dashes count, and only after closing punctuation, so "I came — and I saw" stays whole.
     private static func inlineAttribution(_ line: String) -> (text: String, author: String)? {
         let (text, author) = splitAuthor(line, separators: dashSeparators + ["—", "–", "―"])

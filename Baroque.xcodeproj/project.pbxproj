@@ -14,6 +14,7 @@
 		208A171B67048E9D503D49DC /* RococoDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D5E16ACD7FF1827D79236DF /* RococoDay.swift */; };
 		2B5DFA978824225B3E219D09 /* PaintTextures.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ACC5636EE48B331AEE0BEF84 /* PaintTextures.xcassets */; };
 		3803F770BA96808DD4A85DB1 /* BriefView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB9FD1C9E49B030C81FA54D /* BriefView.swift */; };
+		3A7CF855CFD540B5760B4C93 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61465B04056954658948D58 /* TaskSync.swift */; };
 		3BEA1E5AA80B49752FFBA58B /* Sky.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150B35513880CDCEA93DB2A3 /* Sky.swift */; };
 		432D9609C9C70B5B9944C9B3 /* BaroqueWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 229BD6C6389EEBB34BA27C73 /* BaroqueWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4433ABE32EEB2C42661711DE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6FF761763EBE154928FD8D0E /* Assets.xcassets */; };
@@ -30,6 +31,7 @@
 		8CEBE79E6E15E502B8FA81F2 /* BaroqueWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A5BA03557D6204E0B162DB /* BaroqueWidgets.swift */; };
 		962C953E34C795793F78C772 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 189741D8D4372274D9C8800C /* ContentView.swift */; };
 		9B0DC41B093C96831781DC67 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E10DB9A4E60F7F02EF02277 /* Models.swift */; };
+		9D977E0EE2FD04C631AA11B1 /* TaskSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = D61465B04056954658948D58 /* TaskSync.swift */; };
 		A2C19D3DB23644B465374135 /* RococoBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713E634C6C4D7CDD0CB8827B /* RococoBattery.swift */; };
 		A89F9689089E3DFC1344E655 /* DemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E9A74CD61BAE08B8285C770 /* DemoData.swift */; };
 		AB1FFD1162B91449A81E5BBA /* Sky.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150B35513880CDCEA93DB2A3 /* Sky.swift */; };
@@ -120,6 +122,7 @@
 		BDF3347B9D5F98AD2C967BF4 /* Parsers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Parsers.swift; sourceTree = "<group>"; };
 		BF087F287E6C7B0AF999A45B /* Baroque.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Baroque.xcconfig; sourceTree = "<group>"; };
 		CA977FC190E83843C5965330 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D61465B04056954658948D58 /* TaskSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskSync.swift; sourceTree = "<group>"; };
 		E1A5BA03557D6204E0B162DB /* BaroqueWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaroqueWidgets.swift; sourceTree = "<group>"; };
 		ECB9FD1C9E49B030C81FA54D /* BriefView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefView.swift; sourceTree = "<group>"; };
 		EF359B136741E283BAA61D2E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -204,6 +207,7 @@
 				77B294F6AE8E374319E98F03 /* RococoToday.swift */,
 				150B35513880CDCEA93DB2A3 /* Sky.swift */,
 				AB59A043CEBF2BE6177EF6FD /* Store.swift */,
+				D61465B04056954658948D58 /* TaskSync.swift */,
 				B8D1E098ADA6043F3754244F /* WeatherClient.swift */,
 			);
 			path = Shared;
@@ -376,6 +380,7 @@
 				D330531B28D986B3E4CAE1DC /* RococoToday.swift in Sources */,
 				3BEA1E5AA80B49752FFBA58B /* Sky.swift in Sources */,
 				CB8D1A9C165DBA07BCFED5FC /* Store.swift in Sources */,
+				9D977E0EE2FD04C631AA11B1 /* TaskSync.swift in Sources */,
 				0A71CCDF98D3F04386522E97 /* Theme.swift in Sources */,
 				79E776D3856B3AE6A2E8D00A /* WeatherClient.swift in Sources */,
 				56CABA88291D57E11846FE32 /* WidgetRenders.swift in Sources */,
@@ -399,6 +404,7 @@
 				B55A2FDE4A1724470DEE6289 /* RococoToday.swift in Sources */,
 				AB1FFD1162B91449A81E5BBA /* Sky.swift in Sources */,
 				78B34A961ED2DE085D8E639E /* Store.swift in Sources */,
+				3A7CF855CFD540B5760B4C93 /* TaskSync.swift in Sources */,
 				1FD5EF5EB3C76492B2469517 /* WeatherClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

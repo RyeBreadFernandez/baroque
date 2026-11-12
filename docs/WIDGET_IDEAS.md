@@ -12,13 +12,13 @@ r/iOSsetups favours right now is unverified. Reference pins and thumbnails were 
 ## Facts that matter now
 - **iOS 26 clear and tinted home screens turn widget images grey** unless they are marked full colour. Done in 1.0.0 (`rococoFullColor()`).
 - **iOS refreshes a widget about 40–70 times a day.** Only `Text` timer styles and `ProgressView(timerInterval:)` move live.
-- **Open-Meteo at UCLA:**
-  - works: US air quality, UV, and the marine data at Santa Monica (waves, water temperature, tide height);
+- **Open-Meteo in Los Angeles:**
+  - works: US air quality, UV, and the marine data on the coast (waves, water temperature, tide height);
   - fails: pollen is Europe-only and returns null.
 - **Art Institute of Chicago API:** public-domain images with no key, including Hubert Robert's Méréville canvases. The Met's v1 search was retired; v1.1 works.
 - **Writing to the vault:**
   - it needs a write-scoped token;
-  - if `obsidian-vault-backup` is a one-way backup, the widget's edits could be overwritten, so check how it syncs first.
+  - if the author's vault repository is a one-way backup, the widget's edits could be overwritten, so check how it syncs first.
 
 ## Build first
 1. **Next Adventure** (S/M/L). "Bryce · 12 days" over a painting of the place; within 16 days it adds the place's forecast.

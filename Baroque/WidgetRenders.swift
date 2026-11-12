@@ -158,9 +158,9 @@ enum WidgetRenders {
         let today = cal.startOfDay(for: Date())
         func days(_ n: Int) -> Date { cal.date(byAdding: .day, value: n, to: today) ?? today }
         let stressTasks = [
-            TaskItem(text: "Finish the M142 problem set and check every proof twice", due: days(-3), priority: .highest, sourcePath: "a", lineNumber: 1),
+            TaskItem(text: "Finish the chapter three exercises and check every answer twice", due: days(-3), priority: .highest, sourcePath: "a", lineNumber: 1),
             TaskItem(text: "Submit the physics lab report with the full error analysis appendix", due: today, priority: .highest, sourcePath: "a", lineNumber: 2),
-            TaskItem(text: "Email Dr. Johnson about office hours", due: today, priority: .high, sourcePath: "a", lineNumber: 3),
+            TaskItem(text: "Email the landlord about the leaking tap", due: today, priority: .high, sourcePath: "a", lineNumber: 3),
             TaskItem(text: "Pump tires, get gas", due: nil, priority: .high, sourcePath: "a", lineNumber: 4),
             TaskItem(text: "Renew parking permit before the lot fills up", due: nil, priority: .none, sourcePath: "a", lineNumber: 5),
             TaskItem(text: "Call the dentist", due: nil, priority: .none, sourcePath: "a", lineNumber: 6),

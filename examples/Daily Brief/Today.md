@@ -6,26 +6,25 @@ tags: [daily-brief]
 
 # Friday, November 6
 
-A quiet morning, two afternoon classes, and a clear weekend; the trail forecast is good for Saturday.
+A quiet morning, a pottery class after lunch, and a clear weekend; the forecast is good for Saturday's walk.
 
 ## Needs attention
-- [ ] #todo Send the lab partners the draft of the methods section. (Jamie, email, Nov 5)
-- [ ] #todo Renew the parking permit before it lapses on Sunday. (Transportation office, email, Nov 4)
-- [ ] #todo Reply about Saturday's hike: carpool leaves at 7:00 AM. (Hiking club, message, Nov 5)
+- [ ] #todo Send the garden club the draft of the spring planting plan. (Sam, email, Nov 5)
+- [ ] #todo Renew the library card before it lapses on Sunday. (Library, email, Nov 4)
+- [ ] #todo Reply about Saturday's walk: the group meets at 9:00 AM. (Walking group, message, Nov 5)
 
 ## Today
-- 12:00 PM to 1:50 PM  Algorithms discussion, Room 3400
-- 2:00 PM to 2:50 PM  Linear algebra lecture, Hall 5138
-- 6:00 PM to 7:00 PM  Climbing gym with Sam
+- 12:00 PM to 1:30 PM  Pottery class, Studio 2
+- 3:00 PM to 3:30 PM  Call with the bike shop
+- 6:00 PM to 7:00 PM  Swim
 
 ## Tomorrow
-- 7:00 AM  Carpool to the trailhead
-- 9:00 AM to 3:00 PM  Hike: Big Pine Lakes, 9.7 mi
+- 9:00 AM to 12:00 PM  Walk: the coast path, 6 mi
 
-## Canvas
-- Problem set 4 is due Monday 11:59 PM.
-- The essay on Robert's ruins paintings was graded: 18/20.
+## Notes
+- The seed order arrives next week.
+- The book club picked *Walden* for December.
 
 ## Resolved
 - The library hold on *The Painter of Modern Life* is ready for pickup.
-- Office hours moved to Thursday this week.
+- The bike shop moved the service to Thursday.

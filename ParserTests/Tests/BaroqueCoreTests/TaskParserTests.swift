@@ -219,15 +219,15 @@ final class TaskParserTests: XCTestCase {
         # Tuesday, December 30
 
         ## Todo
-        - [ ] #todo Finish [[M142]] problem set ⏫ 📅 2025-12-30
+        - [ ] #todo Finish [[Chapter 3]] exercises ⏫ 📅 2025-12-30
         - [x] #todo Gym ✅ 2025-12-30
-        - [ ] #todo Email [[Dr. Johnson|Dr. J]] about **office hours**
+        - [ ] #todo Email [[Mrs. Hudson|Mrs. H]] about **the lease**
 
         ## Notes
         Begin at once to live.
         """
         let items = tasks(md, path: "daily note/12.30.2025 - Tuesday.md")
-        XCTAssertEqual(items.map(\.text), ["Finish M142 problem set", "Email Dr. J about office hours"])
+        XCTAssertEqual(items.map(\.text), ["Finish Chapter 3 exercises", "Email Mrs. H about the lease"])
         XCTAssertEqual(items.map(\.lineNumber), [4, 6])
         XCTAssertEqual(items.first?.sourcePath, "daily note/12.30.2025 - Tuesday.md")
     }

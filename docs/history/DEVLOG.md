@@ -45,7 +45,7 @@ There's no iPhone 15 simulator with Xcode 26.4, so I used the iPhone 17 instead.
    - If Xcode refuses the App Groups capability on a free personal team, see "Known gaps" below.
 2. **Create a GitHub token** and paste it into the app:
    - Go to github.com > Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate new token.
-   - Repository access: only `RyeBreadFernandez/obsidian-vault-backup`. Permissions: Contents, Read-only.
+   - Repository access: only the author's vault repository. Permissions: Contents, Read-only.
    - In Baroque, paste it into "Personal access token" and tap **Save & Refresh**.
    - Your tasks should replace the "No GitHub token" line.
 3. **Quotes file:** yours is `main/Quotes/Quotes.md` in the vault (the app's default path since 2026-11-05). It reaches the widgets once the vault is pushed to GitHub.
@@ -710,7 +710,7 @@ Read as a 4×6 grid, the list fills three pages exactly:
 The same set and layout drawn over Hubert Robert's *The Bathing Pool* (1777–80, the Met, public domain): `TVStyle.rococo` switches `TVHome.swift`'s textures, icons, wallpaper and type, and `RCHome.swift` adds the painting details. Render: `SA_ROCOCO=1 swift run --scratch-path .build-sa-home WSunArc` → `out/rococo/` (plus `swing/` and `flowers/`).
 - **Stones:** `Textures/rococo/make.py` lays the seven stones in with broad, level oil strokes in the painting's colours (limestone, foliage greens, sky teal, terracotta, umber, ochre); its wallpaper is the painting cropped round the rotunda. The type is Didot.
 - **Icons:** the same Blender models with `ICON_SET=rococo` (stones from `Textures/rococo/`, objects' paint brushed, written to `Textures/rococo/icons/`).
-- **Your photographs:** `Textures/rococo/photos.py` repaints ten of your landscapes from `~/Pictures` (the Claude Wallpaper Picks, the Field Notes set and one Lightroom export) on this machine. It moves their colours toward *The Bathing Pool* and *The Swing*, then lays them in with strokes that follow the forms (broad, then fine where there's detail), bristle marks, impasto, canvas and varnish. Kings Canyon is the large widget's painting; the dead tree is page three's.
+- **Your photographs:** `Textures/rococo/photos.py` repaints ten of your landscapes from `~/Pictures` (three folders of the author's photographs) on this machine. It moves their colours toward *The Bathing Pool* and *The Swing*, then lays them in with strokes that follow the forms (broad, then fine where there's detail), bristle marks, impasto, canvas and varnish. Kings Canyon is the large widget's painting; the dead tree is page three's.
 - **The two paintings you sent:** Fragonard's *The Swing* (1767, the Wallace Collection, public domain) and the flower still life (artist not identified here) are in `Textures/rococo/source/`. The still life's roses fill the Today widget's panel. Both are also rendered as alternative wallpapers: `wallpaper-swing.jpg` (cropped round the girl) and `wallpaper-flowers.jpg` (the whole bouquet, its dark ground carried up the screen).
 - **Copies:** `screenshots/rococo/` (pages for each wallpaper, the showcase, night, icons, `painted-photos/`, `photos-before-after.jpg`, `icons-for-shortcuts/`).
 

@@ -25,7 +25,7 @@ enum ReadmeRenders {
         }
         d.tasks = [
             task("Finish the problem set and upload it to Gradescope. (Canvas, due tonight)", 0, .high, 10),
-            task("Send the lab partners the draft of the methods section. (Jamie, email, Nov 5)", -1, .none, 11),
+            task("Send the garden club the draft of the spring planting plan. (Sam, email, Nov 5)", -1, .none, 11),
             task("Renew the parking permit before it lapses on Sunday. (Transportation office, email, Nov 4)", 2, .none, 12),
             task("Reply about Saturday's hike: carpool leaves at 7:00 AM. (Hiking club, message, Nov 5)", 1, .none, 13),
             task("Return the library hold on The Painter of Modern Life.", nil, .none, 14),

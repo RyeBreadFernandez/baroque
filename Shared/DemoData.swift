@@ -7,9 +7,9 @@ enum DemoData {
         let today = cal.startOfDay(for: now)
         func days(_ n: Int) -> Date { cal.date(byAdding: .day, value: n, to: today) ?? today }
         let tasks = [
-            TaskItem(text: "Finish M142 problem set", due: days(-1), priority: .high, sourcePath: "Tasks/Master Task List.md", lineNumber: 3),
+            TaskItem(text: "Finish the chapter 3 exercises", due: days(-1), priority: .high, sourcePath: "Tasks/Master Task List.md", lineNumber: 3),
             TaskItem(text: "Submit the physics lab report with the full error analysis appendix", due: today, priority: .highest, sourcePath: "Tasks/Master Task List.md", lineNumber: 4),
-            TaskItem(text: "Email Dr. Johnson", due: today, priority: .none, sourcePath: "Tasks/Master Task List.md", lineNumber: 5),
+            TaskItem(text: "Email the landlord", due: today, priority: .none, sourcePath: "Tasks/Master Task List.md", lineNumber: 5),
             TaskItem(text: "Pump tires, get gas", due: nil, priority: .high, sourcePath: "Tasks/Master Task List.md", lineNumber: 6),
             TaskItem(text: "Call the dentist", due: days(1), priority: .medium, sourcePath: "Tasks/Master Task List.md", lineNumber: 7),
             TaskItem(text: "Renew parking permit", due: nil, priority: .none, sourcePath: "Tasks/Master Task List.md", lineNumber: 8),

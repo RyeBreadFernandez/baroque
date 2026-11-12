@@ -7,19 +7,26 @@ struct BaroqueSettings: Codable, Equatable {
     var githubBranch: String = "main"
     // Newline separated list of vault paths that contain tasks. {daily} expands to today's daily note. Since 2026-11-06
     // the tasks come from the Daily Brief, the note the user's morning brief rewrites in the vault each day.
-    var taskPaths: String = "Daily Brief/Today.md"
+    var taskPaths: String = BaroqueSettings.dailyBriefPath
     var dailyNoteFolder: String = "daily note"
     var dailyNoteFormat: String = "MM.dd.yyyy - EEEE"
     var quotesPath: String = "main/Quotes/Quotes.md"
     var latitude: Double = 34.0522
     var longitude: Double = -118.2437
+    /// True once a location was saved or found in the app. Until then the widgets ask for one rather than quietly
+    /// showing the default coordinates' weather. Settings saved before this field existed decode as set.
+    var locationSet: Bool = false
     var cityName: String = "Los Angeles"
     var useFahrenheit: Bool = true
     var maxTasks: Int = 5
     var includeUndatedTasks: Bool = true
     var quoteRotationMinutes: Int = 60
+    /// The vault's name in Obsidian, for the Brief page's "Open in Obsidian" link.
+    var obsidianVault: String = "Obsidian Vault"
 
     static let `default` = BaroqueSettings()
+    /// The note the morning brief rewrites each day. The Brief page reads it, and only its tasks carry a source note.
+    static let dailyBriefPath = "Daily Brief/Today.md"
     /// The task paths before the Daily Brief; settings still holding exactly these are moved to it once (Store).
     static let masterListTaskPaths = "Tasks/Master Task List.md\n{daily}"
 }
@@ -40,11 +47,13 @@ extension BaroqueSettings {
         quotesPath = value(.quotesPath, d.quotesPath)
         latitude = value(.latitude, d.latitude)
         longitude = value(.longitude, d.longitude)
+        locationSet = value(.locationSet, c.contains(.latitude))
         cityName = value(.cityName, d.cityName)
         useFahrenheit = value(.useFahrenheit, d.useFahrenheit)
         maxTasks = value(.maxTasks, d.maxTasks)
         includeUndatedTasks = value(.includeUndatedTasks, d.includeUndatedTasks)
         quoteRotationMinutes = value(.quoteRotationMinutes, d.quoteRotationMinutes)
+        obsidianVault = value(.obsidianVault, d.obsidianVault)
     }
 }
 

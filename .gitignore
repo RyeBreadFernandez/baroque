@@ -15,3 +15,6 @@ screenshots/
 
 # Your own signing team (see Config/Baroque.xcconfig).
 Config/Local.xcconfig
+
+# Working plans for Claude Code sessions (they name private details)
+docs/plans/

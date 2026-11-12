@@ -56,24 +56,24 @@ final class DailyNotePathTests: XCTestCase {
         A short summary of the day.
 
         ## Needs attention
-        - [ ] #todo Join the all-staff "Info Sharing" Zoom at 8:00 AM. (Alex Rivera, email, Nov 4)
-        - [ ] #todo Reply to Sam about the problem set, part B. (Sam, email reply Nov 5)
+        - [ ] #todo Join the "Garden Club" call at 8:00 AM. (Robin, email, Nov 4)
+        - [ ] #todo Reply to Sam about the seed order, part B. (Sam, email reply Nov 5)
         - [x] #todo Something already done. (email)
 
         ## Today
-        - 8:00 AM to 8:50 AM  Info Sharing meeting, Zoom
-        - 12:00 PM to 1:50 PM  Discussion section, Room 3400
+        - 8:00 AM to 8:50 AM  Garden Club call
+        - 12:00 PM to 1:30 PM  Pottery class, Studio 2
 
         ## Resolved
-        - The reimbursement check was picked up.
+        - The library book was returned.
         """
         let tasks = TaskParser.parse(markdown: brief, sourcePath: "Daily Brief/Today.md")
         XCTAssertEqual(tasks.map(\.text), [
-            "Join the all-staff \"Info Sharing\" Zoom at 8:00 AM. (Alex Rivera, email, Nov 4)",
-            "Reply to Sam about the problem set, part B. (Sam, email reply Nov 5)",
+            "Join the \"Garden Club\" call at 8:00 AM. (Robin, email, Nov 4)",
+            "Reply to Sam about the seed order, part B. (Sam, email reply Nov 5)",
         ])
         XCTAssertTrue(tasks.allSatisfy { $0.due == nil })
-        XCTAssertEqual(TaskParser.sourceNote(tasks[1].text).text, "Reply to Sam about the problem set, part B.")
+        XCTAssertEqual(TaskParser.sourceNote(tasks[1].text).text, "Reply to Sam about the seed order, part B.")
         XCTAssertEqual(TaskParser.sourceNote(tasks[1].text).source, "Sam, email reply Nov 5")
         XCTAssertNil(TaskParser.sourceNote("Pump tires, get gas").source)
         XCTAssertNil(TaskParser.sourceNote("Call (maybe) the dentist").source)   // a parenthesis inside, not a note

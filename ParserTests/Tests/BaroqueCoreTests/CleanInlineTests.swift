@@ -7,12 +7,12 @@ final class CleanInlineTests: XCTestCase {
 
     func testWikiLinks() {
         XCTAssertEqual(clean("Read [[Note]] today"), "Read Note today")
-        XCTAssertEqual(clean("Email [[Dr. Johnson|Dr. J]]"), "Email Dr. J")
+        XCTAssertEqual(clean("Email [[Mrs. Hudson|Mrs. H]]"), "Email Mrs. H")
         XCTAssertEqual(clean("See [[Note#Heading]]"), "See Note > Heading")
         XCTAssertEqual(clean("See [[Note#Heading|the part]]"), "See the part")
         XCTAssertEqual(clean("See [[#Heading]]"), "See Heading")
         XCTAssertEqual(clean("See [[Note#^abc123]]"), "See Note")
-        XCTAssertEqual(clean("See [[Classes/M142]] and [[Physics]]"), "See Classes/M142 and Physics")
+        XCTAssertEqual(clean("See [[Projects/Garden]] and [[Physics]]"), "See Projects/Garden and Physics")
     }
 
     func testEmbedsAreRemoved() {

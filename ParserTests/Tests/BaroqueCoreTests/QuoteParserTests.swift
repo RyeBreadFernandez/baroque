@@ -21,22 +21,22 @@ final class QuoteParserTests: XCTestCase {
     func testStandaloneQuoteLines() {
         XCTAssertEqual(quotes("“The best way out is always through” - Robert Frost\n"),
                        [q("The best way out is always through", "Robert Frost")])
-        XCTAssertEqual(quotes("\"Stay hungry.\"\n\n\"Stay foolish.\" — Stewart Brand"),
-                       [q("Stay hungry."), q("Stay foolish.", "Stewart Brand")])
+        XCTAssertEqual(quotes("\"Well done is better than well said.\"\n\n\"Lost time is never found again.\" — Benjamin Franklin"),
+                       [q("Well done is better than well said."), q("Lost time is never found again.", "Benjamin Franklin")])
         XCTAssertEqual(quotes("“Be here now.” — O’Brien"), [q("Be here now.", "O’Brien")])
         // Prose that only starts with a quotation is not a quote.
         XCTAssertEqual(quotes("\"Hi\" is what I said to him."), [])
     }
 
     func testBlockquoteWithEmDashAuthor() {
-        XCTAssertEqual(quotes("> Waste no more time arguing what a good man should be. Be one.\n> — Marcus Aurelius"),
-                       [q("Waste no more time arguing what a good man should be. Be one.", "Marcus Aurelius")])
-        XCTAssertEqual(quotes("> Be one.\n> —Marcus Aurelius"), [q("Be one.", "Marcus Aurelius")])
+        XCTAssertEqual(quotes("> Our life is frittered away by detail. Simplify, simplify.\n> — Henry David Thoreau"),
+                       [q("Our life is frittered away by detail. Simplify, simplify.", "Henry David Thoreau")])
+        XCTAssertEqual(quotes("> Simplify, simplify.\n> —Henry David Thoreau"), [q("Simplify, simplify.", "Henry David Thoreau")])
     }
 
     func testOtherDashAuthors() {
-        XCTAssertEqual(quotes("> Luck is what happens when preparation meets opportunity.\n> – Seneca"),
-                       [q("Luck is what happens when preparation meets opportunity.", "Seneca")])
+        XCTAssertEqual(quotes("> Brevity is the soul of wit.\n> – William Shakespeare"),
+                       [q("Brevity is the soul of wit.", "William Shakespeare")])
         XCTAssertEqual(quotes("> No man is free who is not master of himself.\n> - Epictetus"),
                        [q("No man is free who is not master of himself.", "Epictetus")])
         XCTAssertEqual(quotes("> Text.\n> -- Someone"), [q("Text.", "Someone")])
@@ -45,14 +45,14 @@ final class QuoteParserTests: XCTestCase {
     }
 
     func testAuthorLineDirectlyBelowBlockquote() {
-        XCTAssertEqual(quotes("> Simplicity is the ultimate sophistication.\n— Leonardo da Vinci"),
-                       [q("Simplicity is the ultimate sophistication.", "Leonardo da Vinci")])
-        XCTAssertEqual(quotes("> Simplicity.\n- Leonardo"), [q("Simplicity.", "Leonardo")])
+        XCTAssertEqual(quotes("> Hitch your wagon to a star.\n— Ralph Waldo Emerson"),
+                       [q("Hitch your wagon to a star.", "Ralph Waldo Emerson")])
+        XCTAssertEqual(quotes("> Simplify, simplify.\n- Thoreau"), [q("Simplify, simplify.", "Thoreau")])
     }
 
     func testInlineAuthorOnLastLine() {
-        XCTAssertEqual(quotes(#"> "Stay hungry, stay foolish." — Steve Jobs"#), [q("Stay hungry, stay foolish.", "Steve Jobs")])
-        XCTAssertEqual(quotes("> Stay hungry. — Steve Jobs"), [q("Stay hungry.", "Steve Jobs")])
+        XCTAssertEqual(quotes(#"> "Nothing will come of nothing." — William Shakespeare"#), [q("Nothing will come of nothing.", "William Shakespeare")])
+        XCTAssertEqual(quotes("> Nothing will come of nothing. — William Shakespeare"), [q("Nothing will come of nothing.", "William Shakespeare")])
         // An em dash inside a sentence is not an attribution.
         XCTAssertEqual(quotes("> I came — and I saw"), [q("I came — and I saw")])
     }
@@ -76,18 +76,18 @@ final class QuoteParserTests: XCTestCase {
     }
 
     func testQuoteCalloutWithoutTitle() {
-        let md = "> [!quote]\n> You have power over your mind, not outside events.\n> — Marcus Aurelius"
-        XCTAssertEqual(quotes(md), [q("You have power over your mind, not outside events.", "Marcus Aurelius")])
+        let md = "> [!quote]\n> To be great is to be misunderstood.\n> — Ralph Waldo Emerson"
+        XCTAssertEqual(quotes(md), [q("To be great is to be misunderstood.", "Ralph Waldo Emerson")])
     }
 
     func testQuoteCalloutTitleIsAuthor() {
-        let md = "> [!quote] Marcus Aurelius\n> You have power over your mind, not outside events."
-        XCTAssertEqual(quotes(md), [q("You have power over your mind, not outside events.", "Marcus Aurelius")])
+        let md = "> [!quote] Ralph Waldo Emerson\n> To be great is to be misunderstood."
+        XCTAssertEqual(quotes(md), [q("To be great is to be misunderstood.", "Ralph Waldo Emerson")])
     }
 
     func testAuthorLineBeatsCalloutTitle() {
-        let md = "> [!quote] Meditations\n> The impediment to action advances action.\n> — Marcus Aurelius"
-        XCTAssertEqual(quotes(md), [q("The impediment to action advances action.", "Marcus Aurelius")])
+        let md = "> [!quote] Self-Reliance\n> Trust thyself: every heart vibrates to that iron string.\n> — Ralph Waldo Emerson"
+        XCTAssertEqual(quotes(md), [q("Trust thyself: every heart vibrates to that iron string.", "Ralph Waldo Emerson")])
     }
 
     func testFoldableAndAliasCallouts() {
@@ -183,8 +183,8 @@ final class QuoteParserTests: XCTestCase {
     }
 
     func testMarkdownInsideQuotesIsCleaned() {
-        let md = "> The **obstacle** is the [[Way]].\n> — [[Marcus Aurelius|Marcus]], *Meditations*"
-        XCTAssertEqual(quotes(md), [q("The obstacle is the Way.", "Marcus, Meditations")])
+        let md = "> **Brevity** is the soul of [[wit]].\n> — [[William Shakespeare|Shakespeare]], *Hamlet*"
+        XCTAssertEqual(quotes(md), [q("Brevity is the soul of wit.", "Shakespeare, Hamlet")])
     }
 
     func testCRLF() {
